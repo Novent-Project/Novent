@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Output
+.output
+.vercel
+.netlify
+.wrangler
+/.svelte-kit
+/build
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.*
+!.env.example
+!.env.test
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# Editor
+.vscode/
+
+# Git
+.git/
+
+# Package lock
+package-lock.json
+
+# Tauri
+src-tauri/target/
+src-tauri/.cargo/
+src-tauri/.DS_Store
+src-tauri/.env
+src-tauri/.env.*
+src-tauri/vite.config.js.timestamp-*
