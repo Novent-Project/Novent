@@ -5,18 +5,19 @@
   "identifier": "com.novent.ost",
   "build": {
     "frontendDist": "../build",
-    "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build"
   },
   "app": {
     "windows": [
       {
-        "title": "OST",
-        "width": 800,
-        "height": 600,
+        "title": "Open Sim Telemetry",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "center": true
       }
     ],
     "security": {
@@ -24,11 +25,20 @@
     }
   },
   "bundle": {
-  "active": true,
-  "targets": "all",
-  "icon": [  ],
-  "android": {
-    "debugApplicationIdSuffix": ".debug"
-  }
+    "active": true,
+    "targets": ["nsis"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "installMode": "currentUser"
+      }
+    }
   }
 }

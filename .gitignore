@@ -33,8 +33,9 @@ vite.config.ts.timestamp-*
 package-lock.json
 
 # Tauri
-src-tauri/target/
 src-tauri/.cargo/
+src-tauri/target/
+src-tauri/Cargo.lock
 src-tauri/.DS_Store
 src-tauri/.env
 src-tauri/.env.*

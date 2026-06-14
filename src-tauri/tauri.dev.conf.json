@@ -1,0 +1,13 @@
+{
+  "build": {
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "npm run dev"
+  },
+  "app": {
+    "windows": [
+      {
+        "devtools": true
+      }
+    ]
+  }
+}
