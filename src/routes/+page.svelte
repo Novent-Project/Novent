@@ -385,7 +385,9 @@
 
 			try {
 				const cfg = await fetchConfig();
-				gamePaths = cfg.games;
+				if (cfg.games && typeof cfg.games === 'object') {
+					gamePaths = { ...gamePaths, ...cfg.games };
+				}
 			} catch {}
 
 			const splash  = document.getElementById('app-splash');
