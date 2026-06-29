@@ -1,4 +1,4 @@
-import { setupCanvas, buildSlots, compIndexAt, type DownsampledTrace, type Trace, type ChartWindow } from './shared.js';
+import { setupCanvas, buildSlots, distBucket, type DownsampledTrace, type Trace, type ChartWindow } from './shared.js';
 
 interface CompLap {
 	trace: Trace;
@@ -19,8 +19,7 @@ export function drawBrake(
 	const toY   = (pct: number) => h - (Math.max(0, Math.min(100, pct)) / 100) * h;
 	const slots = buildSlots(window.windowSize);
 	const slotW = w / (slots.length - 1);
-	const ratio = ds.brake.length / (trace.brake.length || 1);
-	const dsIdx = Math.round(idx * ratio);
+	const dsIdx = distBucket(trace.normPos[idx] ?? 0, ds.brake.length);
 
 	function fill(data: number[], centerIdx: number, fillColor: string, strokeColor: string, dashed = false) {
 		ctx.beginPath();
@@ -54,7 +53,7 @@ export function drawBrake(
 	fill(ds.brake, dsIdx, 'rgba(239,68,68,0.20)', 'rgba(239,68,68,0.95)');
 
 	for (const comp of compLaps) {
-		const compDsIdx = compIndexAt(comp, trace.time[idx] ?? 0);
+		const compDsIdx = dsIdx;
 		fill(comp.ds.brake, compDsIdx, 'rgba(255,255,255,0.04)', 'rgba(255,255,255,0.50)', true);
 	}
 

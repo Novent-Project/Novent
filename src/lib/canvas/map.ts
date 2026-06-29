@@ -1,4 +1,4 @@
-import { type DownsampledTrace, type Trace } from './shared.js';
+import { distBucket, type DownsampledTrace, type Trace } from './shared.js';
 import type { TrackBoundaries } from '../api.js';
 
 interface CompLap {
@@ -102,7 +102,7 @@ export function drawMap(
 			const nx = trace.worldX[i + lineStep], nz = trace.worldZ[i + lineStep];
 			if (isGarbage(wx, wz) || isGarbage(nx, nz)) continue;
 
-			const di = Math.round((i / total) * dsTotal);
+			const di = distBucket(trace.normPos[i] ?? 0, dsTotal);
 			const g  = ds.gas[di]   ?? 0;
 			const b  = ds.brake[di] ?? 0;
 

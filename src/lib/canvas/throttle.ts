@@ -1,4 +1,4 @@
-import { setupCanvas, buildSlots, compIndexAt, type DownsampledTrace, type Trace, type ChartWindow } from './shared.js';
+import { setupCanvas, buildSlots, distBucket, type DownsampledTrace, type Trace, type ChartWindow } from './shared.js';
 
 interface CompLap {
 	trace: Trace;
@@ -61,14 +61,13 @@ export function drawThrottle(
 	const toY    = (pct: number) => h - (Math.max(0, Math.min(100, pct)) / 100) * h;
 	const slots  = buildSlots(window.windowSize);
 	const slotW  = w / (slots.length - 1);
-	const ratio  = ds.gas.length / (trace.gas.length || 1);
-	const dsIdx  = Math.round(idx * ratio);
+	const dsIdx  = distBucket(trace.normPos[idx] ?? 0, ds.gas.length);
 
 	drawChannel(ctx, slots, slotW, h, dsIdx, i => ds.gas[i] * 100, ds.gas.length,
 		'rgba(16,185,129,0.15)', 'rgba(16,185,129,0.95)');
 
 	for (const comp of compLaps) {
-		const compDsIdx = compIndexAt(comp, trace.time[idx] ?? 0);
+		const compDsIdx = dsIdx;
 		drawChannel(ctx, slots, slotW, h, compDsIdx, i => comp.ds.gas[i] * 100, comp.ds.gas.length,
 			'rgba(255,255,255,0.04)', 'rgba(255,255,255,0.50)', true);
 	}
@@ -123,8 +122,7 @@ export function drawThrottleSingle(
 	const toY   = (pct: number) => h - (Math.max(0, Math.min(100, pct)) / 100) * h;
 	const slots = buildSlots(window.windowSize);
 	const slotW = w / (slots.length - 1);
-	const ratio = ds.gas.length / (trace.gas.length || 1);
-	const dsIdx = Math.round(idx * ratio);
+	const dsIdx = distBucket(trace.normPos[idx] ?? 0, ds.gas.length);
 
 	drawChannel(ctx, slots, slotW, h, dsIdx, i => ds.gas[i]   * 100, ds.gas.length,
 		'rgba(16,185,129,0.15)', 'rgba(16,185,129,0.95)');

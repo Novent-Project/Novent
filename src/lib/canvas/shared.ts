@@ -24,38 +24,68 @@ export const TRACE_RESOLUTION = 2000;
 
 export const LAP_COLORS = ['#ffffff', '#f59e0b', '#3b82f6'] as const;
 
-export function downsample(src: Trace, lapTimeSec: number): DownsampledTrace | null {
-	const n = src.gas.length;
-	if (!n || !lapTimeSec) return null;
+export function distBucket(normPos: number, n: number): number {
+	let b = Math.floor((normPos >= 0 && normPos <= 1 ? normPos : 0) * n);
+	if (b < 0) b = 0;
+	else if (b >= n) b = n - 1;
+	return b;
+}
 
-	const buckets = Math.min(TRACE_RESOLUTION, n);
-	const gas:   number[] = new Array(buckets);
-	const brake: number[] = new Array(buckets);
-	const steer: number[] = new Array(buckets);
-	const time:  number[] = new Array(buckets);
-
-	for (let b = 0; b < buckets; b++) {
-		const start = Math.floor((b / buckets) * n);
-		const end   = Math.floor(((b + 1) / buckets) * n);
-		let maxGas = 0, maxBrake = 0, sumSteer = 0, count = 0;
-		for (let i = start; i < end; i++) {
-			if (src.gas[i]   > maxGas)   maxGas   = src.gas[i];
-			if (src.brake[i] > maxBrake) maxBrake = src.brake[i];
-			sumSteer += src.steer[i];
-			count++;
-		}
-		gas[b]   = maxGas;
-		brake[b] = maxBrake;
-		steer[b] = count > 0 ? sumSteer / count : 0;
-		time[b]  = src.time[start] ?? (lapTimeSec * (b / buckets));
+function fillGaps(arr: number[], cnt: number[]): void {
+	const N = arr.length;
+	let first = 0;
+	while (first < N && cnt[first] === 0) first++;
+	if (first === N) return;
+	for (let b = 0; b < first; b++) arr[b] = arr[first];
+	let last = arr[first];
+	for (let b = first + 1; b < N; b++) {
+		if (cnt[b] > 0) last = arr[b];
+		else arr[b] = last;
 	}
+}
+
+export function downsample(src: Trace, _lapTimeSec: number): DownsampledTrace | null {
+	const n = src.gas.length;
+	if (!n) return null;
+
+	let end = n;
+	for (let i = 1; i < n; i++) {
+		if (src.normPos[i - 1] > 0.5 && src.normPos[i] < src.normPos[i - 1] - 0.5) {
+			end = i;
+			break;
+		}
+	}
+
+	const N     = TRACE_RESOLUTION;
+	const gas   = new Array<number>(N).fill(0);
+	const brake = new Array<number>(N).fill(0);
+	const steer = new Array<number>(N).fill(0);
+	const time  = new Array<number>(N).fill(0);
+	const cnt   = new Array<number>(N).fill(0);
+
+	for (let i = 0; i < end; i++) {
+		const b = distBucket(src.normPos[i], N);
+		if (src.gas[i]   > gas[b])   gas[b]   = src.gas[i];
+		if (src.brake[i] > brake[b]) brake[b] = src.brake[i];
+		steer[b] += src.steer[i];
+		const t = src.time[i];
+		if (cnt[b] === 0 || t < time[b]) time[b] = t;
+		cnt[b]++;
+	}
+
+	for (let b = 0; b < N; b++) if (cnt[b] > 0) steer[b] /= cnt[b];
+
+	fillGaps(gas, cnt);
+	fillGaps(brake, cnt);
+	fillGaps(steer, cnt);
+	fillGaps(time, cnt);
+	for (let b = 1; b < N; b++) if (time[b] < time[b - 1]) time[b] = time[b - 1];
 
 	return { gas, brake, steer, time };
 }
 
-export function chartWindowFor(ds: DownsampledTrace, lapTimeSec: number): ChartWindow {
-	const pps        = ds.gas.length / lapTimeSec;
-	const windowSize = Math.floor(pps * 10);
+export function chartWindowFor(_ds: DownsampledTrace, _lapTimeSec: number): ChartWindow {
+	const windowSize = Math.max(40, Math.round(TRACE_RESOLUTION * 0.08));
 	return { windowSize, step: 1 };
 }
 

@@ -1,4 +1,4 @@
-import { setupCanvas, buildSlots, compIndexAt, type DownsampledTrace, type Trace, type ChartWindow } from './shared.js';
+import { setupCanvas, buildSlots, distBucket, type DownsampledTrace, type Trace, type ChartWindow } from './shared.js';
 
 interface CompLap {
 	trace: Trace;
@@ -67,8 +67,7 @@ export function drawSteering(
 	const toY   = (v: number) => (h / 2) - (Math.max(-1, Math.min(1, v)) * (h / 2));
 	const slots = buildSlots(window.windowSize);
 	const slotW = w / (slots.length - 1);
-	const ratio = ds.steer.length / (trace.steer.length || 1);
-	const dsIdx = Math.round(idx * ratio);
+	const dsIdx = distBucket(trace.normPos[idx] ?? 0, ds.steer.length);
 
 	ctx.beginPath();
 	ctx.strokeStyle = 'rgba(255,255,255,0.08)';
@@ -81,7 +80,7 @@ export function drawSteering(
 		'rgba(139,92,246,0.20)', 'rgba(139,92,246,0.90)');
 
 	for (const comp of compLaps) {
-		const compDsIdx = compIndexAt(comp, trace.time[idx] ?? 0);
+		const compDsIdx = dsIdx;
 		drawSteerChannel(ctx, slots, slotW, h, comp.ds.steer, compDsIdx,
 			'rgba(255,255,255,0.04)', 'rgba(255,255,255,0.45)', true);
 	}
@@ -137,8 +136,7 @@ export function drawSteeringSingle(
 	const { ctx, w, h } = setupCanvas(canvas);
 	const slots = buildSlots(window.windowSize);
 	const slotW = w / (slots.length - 1);
-	const ratio = ds.steer.length / (trace.steer.length || 1);
-	const dsIdx = Math.round(idx * ratio);
+	const dsIdx = distBucket(trace.normPos[idx] ?? 0, ds.steer.length);
 
 	ctx.beginPath();
 	ctx.strokeStyle = 'rgba(161,161,170,0.12)';

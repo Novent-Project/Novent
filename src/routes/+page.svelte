@@ -1,198 +1,130 @@
 <script lang="ts">
-  import AppSidebar from "$lib/components/app-sidebar.svelte";
-  import { Separator } from "$lib/components/ui/separator/index";
-  import * as Sidebar from "$lib/components/ui/sidebar/index";
-  import { onMount } from 'svelte';
-  import { AspectRatio } from "$lib/components/ui/aspect-ratio/index.js";
-  import { Badge } from "$lib/components/ui/badge/index.js";
-  let bookmarks = $state(false);
-  let fullUrls = $state(true);
-  let currentSector = $state<number>(1);
-  let appZoom = $state(1);
-  const ZOOM_STEP = 0.1;
-  const ZOOM_MIN = 0.5;
-  const ZOOM_MAX = 2;
-  let scrubberEl = $state<HTMLInputElement | null>(null);
-  let selectedLap = $state<any>(null);
-  let liveMode = $state(false);
-  let trackBoundaries = $state<{
-    inner: {x: number, y: number}[],
-    outer: {x: number, y: number}[]
-  } | null>(null);
-  interface SessionData {
-        laps: any[]; 
-        fastestId: string | null;
-        minTime: number;
-  }
-  let databaseLaps = $state<any[]>([]);
-  type GroupedLapsType = Record<string, Record<string, Record<string, Record<string, SessionData>>>>;
-  let mapScale    = $state(1);
-  let mapOffsetX  = $state(0);
-  let mapOffsetY  = $state(0);
-  let isPanning   = $state(false);
-  let panStart    = { x: 0, y: 0, ox: 0, oy: 0 };
-  let mapFitted   = false;
+	import { onMount, untrack } from 'svelte';
+	import Sidebar from '$lib/components/sidebar.svelte';
+	import Settings from '$lib/components/settings.svelte';
+	import {
+		fetchLaps,
+		fetchTelemetry,
+		fetchStatus,
+		fetchBoundaries,
+		fetchConfig,
+		type Lap,
+		type Telemetry,
+		type TrackBoundaries,
+	} from '$lib/api.js';
+	import {
+		downsample,
+		chartWindowFor,
+		LAP_COLORS,
+		type Trace,
+		type DownsampledTrace,
+		type ChartWindow,
+	} from '$lib/canvas/shared.js';
+	import { drawThrottle } from '$lib/canvas/throttle.js';
+	import { drawThrottleSingle } from '$lib/canvas/throttle.js';
+	import { drawBrake } from '$lib/canvas/brake.js';
+	import { drawSteering, drawSteeringSingle } from '$lib/canvas/steering.js';
+	import { drawMap, fitMap } from '$lib/canvas/map.js';
+	import { drawDelta, deltaRangeFor } from '$lib/canvas/delta.js';
+	import { parseLapTime, formatTime, gameLabel, gameShort } from '$lib/utils/format.js';
+	import acLogo from '$lib/assets/Logos/Assetocorsa.png';
+	import accLogo from '$lib/assets/Logos/ACClogo.png';
 
-  let targetScale   = 1;
-  let targetOffsetX = 0;
-  let targetOffsetY = 0;
-  let smoothRafId   = -1;
-  let smoothRunning = false;
-  let brakeCanvas = $state<HTMLCanvasElement | null>(null);
-  
-let showSettings = $state(false);
-let gamePaths = $state<Record<string, string>>({ AC: '', ACC: '', iRacing: '', LMU: '' });
-let saveStatus = $state('');
-const GAME_LABELS: Record<string, string> = {
-  AC:      'Assetto Corsa',
-  ACC:     'Assetto Corsa Competizione',
-  iRacing: 'iRacing',
-  LMU:     'Le Mans Ultimate',
-};
-let gameConnected = $state(false);
-let connectedGame = $state<string | null>(null);
+	interface SessionData {
+		laps:      Lap[];
+		fastestId: string | null;
+		minTime:   number;
+	}
+	type GroupedLaps = Record<string, Record<string, Record<string, Record<string, SessionData>>>>;
 
-async function loadConfig() {
-  try {
-    const res = await fetch('http://127.0.0.1:8000/config');
-    if (res.ok) {
-      const config = await res.json();
-      gamePaths = config.games ?? { AC: '', ACC: '', iRacing: '', LMU: '' };
-    }
-  } catch {}
-}
+	interface CompLap {
+		lap:     Lap;
+		trace:   Trace;
+		ds:      DownsampledTrace;
+		color:   string;
+		lapTime: number;
+	}
 
-async function saveConfig() {
-  try {
-    const res = await fetch('http://127.0.0.1:8000/config/games', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ games: gamePaths }),
-    });
-    saveStatus = res.ok ? 'Saved' : 'Failed to save';
-  } catch {
-    saveStatus = 'Failed to save';
-  }
-  setTimeout(() => saveStatus = '', 2000);
-}
-  function drawBrakeTrace(idx: number) {
-    const canvas = brakeCanvas;
-    const ds     = dsTrace;
-    if (!canvas || !ds) return;
+	const ZOOM_STEP = 0.1;
+	const ZOOM_MIN  = 0.5;
+	const ZOOM_MAX  = 2;
+	const LERP      = 0.14;
+	const SPEEDS    = [0.25, 0.5, 1, 2, 4];
+	const EMPTY_TRACE: Trace = { gas: [], brake: [], steer: [], normPos: [], worldX: [], worldZ: [], time: [] };
 
-    const dpr = window.devicePixelRatio || 1;
-    const w   = canvas.offsetWidth;
-    const h   = canvas.offsetHeight;
-    if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
-      canvas.width = w * dpr; canvas.height = h * dpr;
-    }
-    const ctx = canvas.getContext("2d")!;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, w, h);
+	const GAME_LOGOS: Record<string, string> = {
+		AC:  acLogo,
+		ACC: accLogo,
+	};
 
-    const { windowSize } = chartWindow;
-    if (!windowSize) return;
+	// UI state
+	let appZoom       = $state(1);
+	let traceZoom     = $state(2);
+	let sidebarOpen   = $state(true);
+	let showSettings  = $state(false);
+	let gamePaths     = $state<Record<string, string>>({ AC: '', ACC: '', iRacing: '', LMU: '' });
+	let gameConnected = $state(false);
+	let connectedGame = $state<string | null>(null);
 
-    const toY   = (pct: number) => h - (Math.max(0, Math.min(100, pct)) / 100) * h;
-    const ratio = ds.brake.length / currentTrace.brake.length;
-    const dsIdx = Math.round(idx * ratio);
+	// data
+	let databaseLaps = $state<Lap[]>([]);
+	let selectedLap  = $state<Lap | null>(null);
+	let activeGame   = $state<string | null>(null);
+	let gameMenuOpen = $state(false);
+	let compLaps     = $state<CompLap[]>([]);
 
-    const slots: number[] = [];
-    for (let o = -windowSize; o <= windowSize; o++) slots.push(o);
-    const slotW = w / (slots.length - 1);
+	// current lap
+	let currentTrace    = $state.raw<Trace>(EMPTY_TRACE);
+	let dsTrace         = $state<DownsampledTrace | null>(null);
+	let boundaries      = $state<TrackBoundaries | null>(null);
+	let chartWindow = $state<ChartWindow>({ windowSize: 0, step: 1 });
+	let resolvedLapTime = $state(0);
 
+	// playback
+	let isPlaying     = $state(false);
+	let playbackSpeed = $state(1);
+	let speedMenuOpen = $state(false);
+	let currentTime = $state(0);
+	let playbackIdx = $state(0);
+	let exactIdx    = 0;
+	let rafId       = 0;
 
-    ctx.beginPath();
-    ctx.fillStyle = "rgba(239,68,68,0.2)";
-    let started = false;
-    for (let s = 0; s < slots.length; s++) {
-      const i = dsIdx + slots[s];
-      const v = (i >= 0 && i < ds.brake.length) ? ds.brake[i] * 100 : 0;
-      const x = s * slotW, y = toY(v);
-      if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
-    }
-    ctx.lineTo((slots.length - 1) * slotW, h); ctx.lineTo(0, h); ctx.closePath(); ctx.fill();
+	// canvases
+	let mapCanvas   = $state<HTMLCanvasElement | null>(null);
+	let traceCanvas = $state<HTMLCanvasElement | null>(null);
+	let brakeCanvas = $state<HTMLCanvasElement | null>(null);
+	let steerCanvas = $state<HTMLCanvasElement | null>(null);
+	let canvasW     = $state(0);
+	let canvasH     = $state(0);
+	let compTraceCanvases = $state<(HTMLCanvasElement | null)[]>([]);
+	let compSteerCanvases = $state<(HTMLCanvasElement | null)[]>([]);
+	let deltaCanvas       = $state<HTMLCanvasElement | null>(null);
+	let deltaRange = $derived.by(() => {
+		if (!dsTrace || compLaps.length === 0) return 0.5;
+		return deltaRangeFor(dsTrace, compLaps[0].ds);
+	});
 
-    ctx.beginPath();
-    ctx.strokeStyle = "rgba(239,68,68,0.95)";
-    ctx.lineWidth = 1.5; ctx.lineJoin = "round";
-    started = false;
-    for (let s = 0; s < slots.length; s++) {
-      const i = dsIdx + slots[s];
-      const v = (i >= 0 && i < ds.brake.length) ? ds.brake[i] * 100 : 0;
-      const x = s * slotW, y = toY(v);
-      if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
+	// map pan / zoom
+	let mapScale   = $state(1);
+	let fitScale   = $state(1);
+	let mapOffsetX = $state(0);
+	let mapOffsetY = $state(0);
+	let isPanning  = $state(false);
+	let targetScale   = 1;
+	let targetOffsetX = 0;
+	let targetOffsetY = 0;
+	let smoothRafId   = -1;
+	let smoothRunning = false;
+	let panStart      = { x: 0, y: 0, ox: 0, oy: 0 };
+	let mapFitted     = false;
 
-
-for (const comp of compLaps) {
-  const t = currentTrace.time[idx] ?? 0;
-  const compRawIdx = comp.trace.time.findIndex(pt => pt >= t);
-  const compDsIdx  = Math.round(Math.max(0, compRawIdx === -1 ? comp.trace.time.length - 1 : compRawIdx) * (comp.ds.brake.length / comp.trace.brake.length));
-
-  ctx.beginPath(); ctx.fillStyle = `rgba(255,255,255,0.04)`;
-  let started = false;
-  for (let s = 0; s < slots.length; s++) {
-    const i = compDsIdx + slots[s];
-    const v = (i >= 0 && i < comp.ds.brake.length) ? comp.ds.brake[i] * 100 : 0;
-    const x = s * slotW, y = toY(v);
-    if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
-  }
-  ctx.lineTo((slots.length-1)*slotW, h); ctx.lineTo(0, h); ctx.closePath(); ctx.fill();
-
-
-  ctx.beginPath();
-  ctx.strokeStyle = `rgba(255,255,255,0.5)`;
-  ctx.lineWidth = 1.5; ctx.lineJoin = "round";
-  ctx.setLineDash([4, 3]);
-  started = false;
-  for (let s = 0; s < slots.length; s++) {
-    const i = compDsIdx + slots[s];
-    const v = (i >= 0 && i < comp.ds.brake.length) ? comp.ds.brake[i] * 100 : 0;
-    const x = s * slotW, y = toY(v);
-    if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
-  }
-  ctx.stroke();
-  ctx.setLineDash([]);
-}
-    ctx.fillStyle = "rgba(255,255,255,0.2)"; ctx.font = "9px monospace"; ctx.textAlign = "left";
-    ctx.fillText("100", 3, toY(96) + 9);
-    ctx.fillText("0",   3, toY(4));
-
-    ctx.beginPath(); ctx.strokeStyle = "rgba(255,255,255,0.15)"; ctx.lineWidth = 1;
-    ctx.setLineDash([3,3]); ctx.moveTo(w/2, 0); ctx.lineTo(w/2, h); ctx.stroke(); ctx.setLineDash([]);
-    {
-      const val = (dsIdx >= 0 && dsIdx < ds.brake.length) ? ds.brake[dsIdx] * 100 : 0;
-      const dotX = w / 2;
-      const dotY = toY(val);
-
-      ctx.beginPath();
-      ctx.shadowColor = "rgba(239,68,68,0.9)";
-      ctx.shadowBlur = 10;
-      ctx.fillStyle = "#ef4444";
-      ctx.arc(dotX, dotY, 3.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-   
-      const label = Math.round(val) + "%";
-      ctx.font = "bold 9px monospace";
-      const tw = ctx.measureText(label).width;
-      const px = 5, py = 3;
-      const bx = dotX + 7, by = dotY - 8;
-      ctx.fillStyle = "rgba(20,20,20,0.85)";
-      ctx.beginPath();
-      ctx.roundRect(bx, by, tw + px * 2, 14 + py, 3);
-      ctx.fill();
-      ctx.fillStyle = "#ef4444";
-      ctx.textAlign = "left";
-      ctx.fillText(label, bx + px, by + 10);
-    }
-    ctx.fillStyle = "rgba(255,255,255,0.2)"; ctx.font = "9px monospace";
-  }
-  
-
-	const LERP = 0.14;
+	let viewWindow = $derived.by<ChartWindow>(() => {
+		const base = chartWindow.windowSize;
+		if (!base) return chartWindow;
+		const zoom = fitScale > 0 ? mapScale / fitScale : 1;
+		const clamped = Math.min(8, Math.max(0.25, zoom));
+		return { windowSize: Math.max(20, Math.round(base * traceZoom / clamped)), step: chartWindow.step };
+	});
 
 	const groupedLaps = $derived.by<GroupedLaps>(() => {
 		const result: GroupedLaps = {};
@@ -229,7 +161,7 @@ for (const comp of compLaps) {
 			{
 				lapTime:   selectedLap ? (selectedLap.lap_time || selectedLap.time || '') : '',
 				car:       selectedLap?.car ?? '',
-				color:     LAP_COLORS[0],
+				color:     LAP_COLORS[0] as string,
 				ds:        dsTrace,
 				trace:     currentTrace,
 				rawIdx:    playbackIdx,
@@ -251,22 +183,25 @@ for (const comp of compLaps) {
 	});
 
 	function redrawAll(idx: number) {
-		drawThrottle(traceCanvas, dsTrace, currentTrace, idx, chartWindow, compLaps);
-		drawBrake(brakeCanvas, dsTrace, currentTrace, idx, chartWindow, compLaps);
-		drawSteering(steerCanvas, dsTrace, currentTrace, idx, chartWindow, compLaps);
-		if (compLaps.length > 0) redrawComparison(idx);
+		drawThrottle(traceCanvas, dsTrace, currentTrace, idx, viewWindow, compLaps);
+		drawBrake(brakeCanvas, dsTrace, currentTrace, idx, viewWindow, compLaps);
+		drawSteering(steerCanvas, dsTrace, currentTrace, idx, viewWindow, compLaps);
+		if (compLaps.length > 0) {
+			drawDelta(deltaCanvas, dsTrace, compLaps[0].ds, currentTrace, idx, viewWindow, deltaRange);
+			redrawComparison(idx);
+		}
 	}
 
 	function redrawComparison(idx: number) {
-		const t = currentTrace.time[idx] ?? 0;
-		drawThrottleSingle(compTraceCanvases[0] ?? null, dsTrace, currentTrace, idx, chartWindow);
-		drawSteeringSingle(compSteerCanvases[0] ?? null, dsTrace, currentTrace, idx, chartWindow, 'primary');
+		const pNorm = currentTrace.normPos[idx] ?? 0;
+		drawThrottleSingle(compTraceCanvases[0] ?? null, dsTrace, currentTrace, idx, viewWindow);
+		drawSteeringSingle(compSteerCanvases[0] ?? null, dsTrace, currentTrace, idx, viewWindow, 'primary');
 		for (let ci = 0; ci < compLaps.length; ci++) {
 			const comp    = compLaps[ci];
-			const rawIdx  = comp.trace.time.findIndex(pt => pt >= t);
-			const compIdx = rawIdx === -1 ? comp.trace.time.length - 1 : rawIdx;
-			drawThrottleSingle(compTraceCanvases[ci + 1] ?? null, comp.ds, comp.trace, compIdx, chartWindow);
-			drawSteeringSingle(compSteerCanvases[ci + 1] ?? null, comp.ds, comp.trace, compIdx, chartWindow, comp.color);
+			const rawIdx  = comp.trace.normPos.findIndex(p => p >= pNorm);
+			const compIdx = rawIdx === -1 ? comp.trace.normPos.length - 1 : rawIdx;
+			drawThrottleSingle(compTraceCanvases[ci + 1] ?? null, comp.ds, comp.trace, compIdx, viewWindow);
+			drawSteeringSingle(compSteerCanvases[ci + 1] ?? null, comp.ds, comp.trace, compIdx, viewWindow, comp.color);
 		}
 	}
 
@@ -276,6 +211,7 @@ for (const comp of compLaps) {
 			const fit = fitMap(currentTrace, canvasW, canvasH);
 			if (fit) {
 				targetScale   = fit.scale;
+				fitScale      = fit.scale;
 				targetOffsetX = fit.offsetX;
 				targetOffsetY = fit.offsetY;
 				mapScale      = fit.scale * 0.4;
@@ -290,7 +226,16 @@ for (const comp of compLaps) {
 
 	$effect(() => {
 		if (compLaps.length === 0 || !dsTrace) return;
-		Promise.resolve().then(() => redrawComparison(playbackIdx));
+		Promise.resolve().then(() => {
+			redrawComparison(playbackIdx);
+			drawDelta(deltaCanvas, dsTrace, compLaps[0].ds, currentTrace, playbackIdx, viewWindow, deltaRange);
+		});
+	});
+
+	$effect(() => {
+		const w = viewWindow;
+		if (!dsTrace || !w.windowSize) return;
+		untrack(() => redrawAll(playbackIdx));
 	});
 
 	function smoothTick() {
@@ -341,7 +286,7 @@ for (const comp of compLaps) {
 			if (last === null) { last = ts; rafId = requestAnimationFrame(tick); return; }
 			const dt = Math.min((ts - last) / 1000, 0.1);
 			last     = ts;
-			exactIdx = Math.min(exactIdx + pps * dt, total - 1);
+			exactIdx = Math.min(exactIdx + pps * dt * playbackSpeed, total - 1);
 			if (exactIdx >= total - 1) {
 				exactIdx    = total - 1;
 				playbackIdx = total - 1;
@@ -465,19 +410,19 @@ for (const comp of compLaps) {
 
 		let pollId:   ReturnType<typeof setInterval>;
 		let statusId: ReturnType<typeof setInterval>;
-		let trayUnlisten: (() => void) | undefined;
 
-		async function pollLaps() {
+		async function pollLaps(): Promise<boolean> {
 			try {
-				const laps = await fetchLaps();
-				databaseLaps = laps;
+				databaseLaps = await fetchLaps();
 				return true;
-			} catch { return false; }
+			} catch {
+				return false;
+			}
 		}
 
 		async function pollStatus() {
 			try {
-				const s   = await fetchStatus();
+				const s = await fetchStatus();
 				gameConnected = s.connected;
 				connectedGame = s.game;
 			} catch {
@@ -486,43 +431,36 @@ for (const comp of compLaps) {
 			}
 		}
 
-    const initData = async (): Promise<void> => {
-      let retries = 15;
-      while (retries > 0) {
-        const success = await fetchLaps();
-        if (success) break;
-        await new Promise<void>((resolve) => setTimeout(resolve, 1000));
-        retries--;
-      }
-      const reveal = () => {
-        const splash = document.getElementById('app-splash');
-        if (!splash) return;
-        splash.classList.add('hide');
-        setTimeout(() => splash.remove(), 650);
-      };
-      const MIN_SPLASH = 4000;
-      const elapsed = performance.now();
-      elapsed < MIN_SPLASH ? setTimeout(reveal, MIN_SPLASH - elapsed) : reveal();
-      pollInterval = setInterval(fetchLaps, 3000);
-    };
+		async function loadConfig() {
+			try {
+				const cfg = await fetchConfig();
+				gamePaths = cfg.games ?? gamePaths;
+			} catch {}
+		}
 
-    const setupTrayMinimize = async (): Promise<void> => {
-      if (!('__TAURI_INTERNALS__' in window)) return;
-      try {
-        const { getCurrentWindow } = await import('@tauri-apps/api/window');
-        const appWindow = getCurrentWindow();
-        trayUnlisten = await appWindow.onResized(async () => {
-          if (await appWindow.isMinimized()) await appWindow.hide();
-        });
-      } catch (e) {
-        console.error('Tray minimize setup failed', e);
-      }
-    };
+		async function initData() {
+			let retries = 15;
+			while (retries > 0) {
+				if (await pollLaps()) break;
+				await new Promise<void>(resolve => setTimeout(resolve, 1000));
+				retries--;
+			}
+			const splash = document.getElementById('app-splash');
+			const reveal = () => {
+				if (!splash) return;
+				splash.classList.add('hide');
+				setTimeout(() => splash.remove(), 650);
+			};
+			const MIN_SPLASH = 4000;
+			const elapsed = performance.now();
+			elapsed < MIN_SPLASH ? setTimeout(reveal, MIN_SPLASH - elapsed) : reveal();
+			pollId = setInterval(pollLaps, 3000);
+		}
 
-    initData();
-    setupTrayMinimize();
-    fetchStatus();
-    statusInterval = setInterval(fetchStatus, 2000);
+		loadConfig();
+		initData();
+		pollStatus();
+		statusId = setInterval(pollStatus, 2000);
 
 		return () => {
 			window.removeEventListener('keydown', handleKeydown);
@@ -530,7 +468,6 @@ for (const comp of compLaps) {
 			clearInterval(statusId);
 			cancelAnimationFrame(rafId);
 			cancelAnimationFrame(smoothRafId);
-			trayUnlisten?.();
 		};
 	});
 </script>
@@ -554,7 +491,7 @@ for (const comp of compLaps) {
 
 	<div class="main">
 		{#if showSettings}
-			<Settings bind:gamePaths bind:appZoom onClose={() => showSettings = false} />
+			<Settings bind:gamePaths bind:appZoom bind:traceZoom onClose={() => { showSettings = false; if (dsTrace) redrawAll(playbackIdx); }} />
 		{/if}
 
 		<header class="topbar">
@@ -580,6 +517,50 @@ for (const comp of compLaps) {
 			</div>
 
 			<div class="topbar-right">
+				<div class="game-select">
+					<button
+						class="game-btn"
+						class:open={gameMenuOpen}
+						disabled={Object.keys(groupedLaps).length === 0}
+						onclick={() => gameMenuOpen = !gameMenuOpen}
+						title="Select game"
+					>
+						{#if activeGame}
+							{#if GAME_LOGOS[activeGame]}
+								<span class="game-logo"><img src={GAME_LOGOS[activeGame]} alt={gameLabel(activeGame)} /></span>
+							{:else}
+								<span class="game-text">{gameShort(activeGame)}</span>
+							{/if}
+						{:else}
+							<span class="game-empty">No data</span>
+						{/if}
+						<svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+							<path d="M4 6l4 4 4-4"/>
+						</svg>
+					</button>
+					{#if gameMenuOpen}
+						<button class="game-backdrop" aria-label="Close game menu" onclick={() => gameMenuOpen = false}></button>
+						<div class="game-menu">
+							{#each Object.keys(groupedLaps) as g}
+								<button
+									class="game-option"
+									class:active={activeGame === g}
+									onclick={() => { activeGame = g; gameMenuOpen = false; }}
+								>
+									{#if GAME_LOGOS[g]}
+										<span class="game-logo"><img src={GAME_LOGOS[g]} alt={gameLabel(g)} /></span>
+									{:else}
+										<span class="game-text">{gameShort(g)}</span>
+									{/if}
+									<span>{gameLabel(g)}</span>
+								</button>
+							{/each}
+						</div>
+					{/if}
+				</div>
+
+				<div class="sep"></div>
+
 				<div class="status-pill" class:connected={gameConnected} title={gameConnected ? `Connected to ${connectedGame ?? 'sim'}` : 'No game detected'}>
 					<span class="status-dot"></span>
 					<span>{gameConnected ? (connectedGame ?? 'Connected') : 'No game'}</span>
@@ -616,7 +597,7 @@ for (const comp of compLaps) {
 			>
 				{#if currentTrace.worldX.length > 0}
 					<canvas bind:this={mapCanvas} class="fill-canvas"></canvas>
-					<div class="map-legend">
+					<div class="map-legend" class:lifted={speedMenuOpen}>
 						{#if selectedLap}
 							<div class="legend-chip">
 								<span class="dot primary-dot"></span>
@@ -674,6 +655,14 @@ for (const comp of compLaps) {
 
 						{#if compLaps.length > 0}
 							<div class="chart-card">
+								<div class="chart-label">
+									<span class="chart-dot" style="background:#e5e7eb"></span>
+									Delta — vs {compLaps[0].lap.lap_time || compLaps[0].lap.time || 'reference'}
+								</div>
+								<canvas bind:this={deltaCanvas} class="chart-canvas"></canvas>
+							</div>
+
+							<div class="chart-card">
 								<div class="chart-label">Comparison — Throttle &amp; Brake</div>
 								<div class="comp-grid" style="grid-template-columns: repeat({allLaps.length}, 1fr);">
 									{#each allLaps as entry, i}
@@ -725,7 +714,23 @@ for (const comp of compLaps) {
 				</button>
 			</div>
 
-			<div class="pb-time">
+			<div class="pb-speed">
+					<button class="pb-speed-btn" class:open={speedMenuOpen} onclick={() => speedMenuOpen = !speedMenuOpen} title="Playback speed">
+						{playbackSpeed}×
+					</button>
+					{#if speedMenuOpen}
+						<button class="pb-speed-backdrop" aria-label="Close speed menu" onclick={() => speedMenuOpen = false}></button>
+						<div class="pb-speed-menu">
+							{#each SPEEDS as s}
+								<button class="pb-speed-option" class:active={playbackSpeed === s} onclick={() => { playbackSpeed = s; speedMenuOpen = false; }}>
+									{s}×
+								</button>
+							{/each}
+						</div>
+					{/if}
+				</div>
+
+				<div class="pb-time">
 				<span class="pb-current">{formatTime(currentTime)}</span>
 				<span class="pb-sep">/</span>
 				<span class="pb-total">{formatTime(resolvedLapTime)}</span>
@@ -933,6 +938,11 @@ for (const comp of compLaps) {
 		flex-direction: column;
 		gap: 5px;
 		z-index: 10;
+		transition: bottom 0.18s ease;
+	}
+
+	.map-legend.lifted {
+		bottom: 150px;
 	}
 
 	.legend-chip {
@@ -1199,4 +1209,179 @@ for (const comp of compLaps) {
 	}
 
 	.pb-nudge button:hover { color: #fff; background: rgba(255,255,255,0.06); }
+
+	.pb-speed {
+		position: relative;
+		flex-shrink: 0;
+	}
+
+	.pb-speed-btn {
+		min-width: 36px;
+		height: 24px;
+		padding: 0 8px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 5px;
+		background: rgba(255,255,255,0.04);
+		border: 1px solid rgba(255,255,255,0.08);
+		cursor: pointer;
+		font-size: 11px;
+		font-family: var(--font-mono);
+		font-variant-numeric: tabular-nums;
+		color: rgba(255,255,255,0.70);
+		transition: color 0.12s, background 0.12s;
+	}
+
+	.pb-speed-btn:hover, .pb-speed-btn.open {
+		color: #fff;
+		background: rgba(255,255,255,0.07);
+	}
+
+	.pb-speed-backdrop {
+		position: fixed;
+		inset: 0;
+		z-index: 40;
+		background: none;
+		border: none;
+		cursor: default;
+	}
+
+	.pb-speed-menu {
+		position: absolute;
+		bottom: calc(100% + 6px);
+		left: 0;
+		z-index: 50;
+		min-width: 64px;
+		padding: 4px;
+		border-radius: 6px;
+		background: #0c0d10;
+		border: 1px solid rgba(255,255,255,0.10);
+		box-shadow: 0 -8px 30px rgba(0,0,0,0.50);
+		display: flex;
+		flex-direction: column;
+		gap: 1px;
+	}
+
+	.pb-speed-option {
+		padding: 6px 10px;
+		border-radius: 4px;
+		background: none;
+		border: none;
+		cursor: pointer;
+		text-align: left;
+		font-size: 11px;
+		line-height: 1;
+		font-family: var(--font-mono);
+		font-variant-numeric: tabular-nums;
+		color: rgba(255,255,255,0.70);
+		transition: background 0.12s, color 0.12s;
+	}
+
+	.pb-speed-option:hover { background: rgba(255,255,255,0.05); color: #fff; }
+	.pb-speed-option.active { color: #6ee7b7; }
+
+	.game-select {
+		position: relative;
+	}
+
+	.game-btn {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		padding: 4px 8px;
+		border-radius: 5px;
+		background: rgba(255,255,255,0.04);
+		border: 1px solid rgba(255,255,255,0.08);
+		cursor: pointer;
+		font-size: 11px;
+		font-family: var(--font-mono);
+		color: rgba(255,255,255,0.80);
+		transition: background 0.12s, border-color 0.12s;
+	}
+
+	.game-btn:hover:not(:disabled) { background: rgba(255,255,255,0.07); }
+	.game-btn:disabled { opacity: 0.5; cursor: default; }
+
+	.game-btn .chevron {
+		width: 12px;
+		height: 12px;
+		color: rgba(255,255,255,0.40);
+		transition: transform 0.15s;
+	}
+
+	.game-btn.open .chevron { transform: rotate(180deg); }
+
+	.game-backdrop {
+		position: fixed;
+		inset: 0;
+		z-index: 40;
+		background: none;
+		border: none;
+		cursor: default;
+	}
+
+	.game-menu {
+		position: absolute;
+		top: calc(100% + 6px);
+		right: 0;
+		z-index: 50;
+		min-width: 190px;
+		padding: 4px;
+		border-radius: 6px;
+		background: #0c0d10;
+		border: 1px solid rgba(255,255,255,0.10);
+		box-shadow: 0 8px 30px rgba(0,0,0,0.50);
+		display: flex;
+		flex-direction: column;
+		gap: 1px;
+	}
+
+	.game-option {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 6px 10px;
+		border-radius: 4px;
+		background: none;
+		border: none;
+		cursor: pointer;
+		text-align: left;
+		font-size: 11px;
+		line-height: 1;
+		font-family: var(--font-mono);
+		color: rgba(255,255,255,0.70);
+		transition: background 0.12s, color 0.12s;
+	}
+
+	.game-option:hover { background: rgba(255,255,255,0.05); color: #fff; }
+	.game-option.active { color: #6ee7b7; }
+
+	.game-text {
+		font-size: 11px;
+		font-family: var(--font-mono);
+		color: rgba(255,255,255,0.80);
+		flex-shrink: 0;
+	}
+
+	.game-empty { color: rgba(255,255,255,0.45); }
+
+	.game-logo {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		height: 18px;
+		padding: 2px 5px;
+		border-radius: 4px;
+		background: #fff;
+		flex-shrink: 0;
+	}
+
+	.game-logo img {
+		height: 13px;
+		width: auto;
+		max-width: 72px;
+		object-fit: contain;
+		display: block;
+	}
 </style>

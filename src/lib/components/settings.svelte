@@ -5,14 +5,20 @@
 	interface Props {
 		gamePaths: Record<string, string>;
 		appZoom:   number;
+		traceZoom: number;
 		onClose:   () => void;
 	}
 
-	let { gamePaths = $bindable(), appZoom = $bindable(), onClose }: Props = $props();
+	let { gamePaths = $bindable(), appZoom = $bindable(), traceZoom = $bindable(), onClose }: Props = $props();
 
 	const ZOOM_STEP = 0.1;
 	const ZOOM_MIN  = 0.5;
 	const ZOOM_MAX  = 2.0;
+
+	const TRACE_ZOOM_MIN     = 0.5;
+	const TRACE_ZOOM_MAX     = 4;
+	const TRACE_ZOOM_STEP    = 0.25;
+	const TRACE_ZOOM_DEFAULT = 2;
 
 	const PLACEHOLDERS: Record<string, string> = {
 		AC:      'C:/Program Files (x86)/Steam/steamapps/common/assettocorsa/acs.exe',
@@ -31,6 +37,10 @@
 
 	function adjustZoom(delta: number) {
 		appZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round((appZoom + delta) * 10) / 10));
+	}
+
+	function adjustTraceZoom(delta: number) {
+		traceZoom = Math.min(TRACE_ZOOM_MAX, Math.max(TRACE_ZOOM_MIN, Math.round((traceZoom + delta) * 100) / 100));
 	}
 </script>
 
@@ -96,7 +106,7 @@
 
 		<section>
 			<h2>Display</h2>
-			<p>Scale the entire interface. You can also press Ctrl&nbsp;+ / Ctrl&nbsp;− while focused, or Ctrl&nbsp;0 to reset.</p>
+			<p>Scale the interface (Ctrl&nbsp;+ / Ctrl&nbsp;− while focused, Ctrl&nbsp;0 to reset), and set how much of the lap the trace graphs span relative to the map zoom. Trace changes apply when you close this panel.</p>
 
 			<div class="zoom-row">
 				<div class="zoom-label">
@@ -108,6 +118,19 @@
 					<span>{Math.round(appZoom * 100)}%</span>
 					<button onclick={() => adjustZoom(ZOOM_STEP)}>+</button>
 					<button class="reset-btn" onclick={() => appZoom = 1}>Reset</button>
+				</div>
+			</div>
+
+			<div class="zoom-row">
+				<div class="zoom-label">
+					<span>Trace proportionality</span>
+					<span class="zoom-pct">≈{Math.round(traceZoom * 16)}% of lap shown</span>
+				</div>
+				<div class="zoom-controls">
+					<button onclick={() => adjustTraceZoom(-TRACE_ZOOM_STEP)}>−</button>
+					<span>{traceZoom.toFixed(2)}×</span>
+					<button onclick={() => adjustTraceZoom(TRACE_ZOOM_STEP)}>+</button>
+					<button class="reset-btn" onclick={() => traceZoom = TRACE_ZOOM_DEFAULT}>Reset</button>
 				</div>
 			</div>
 		</section>

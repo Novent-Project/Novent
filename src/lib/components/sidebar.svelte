@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { formatName, gameLabel, gameShort } from '$lib/utils/format.js';
+	import { formatName } from '$lib/utils/format.js';
 	import type { Lap } from '$lib/api.js';
 
 	interface SessionData {
@@ -83,21 +83,6 @@
 	</div>
 
 	{#if !collapsed}
-		{#if games.length > 0}
-			<div class="game-tabs">
-				{#each games as game}
-					<button
-						class="game-tab"
-						class:active={activeGame === game}
-						onclick={() => activeGame = game}
-						title={gameLabel(game)}
-					>
-						{gameShort(game)}
-					</button>
-				{/each}
-			</div>
-		{/if}
-
 		<div class="sidebar-content">
 			{#if activeGame && groupedLaps[activeGame]}
 				{@const tracks = groupedLaps[activeGame]}
@@ -296,38 +281,6 @@
 		height: 14px;
 	}
 
-	.game-tabs {
-		display: flex;
-		border-bottom: 1px solid rgba(255,255,255,0.06);
-		flex-shrink: 0;
-	}
-
-	.game-tab {
-		flex: 1;
-		padding: 8px 4px;
-		font-size: 10px;
-		font-family: var(--font-mono);
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: rgba(255,255,255,0.3);
-		background: none;
-		border: none;
-		border-bottom: 2px solid transparent;
-		cursor: pointer;
-		transition: color 0.15s, background 0.15s, border-color 0.15s;
-	}
-
-	.game-tab:hover {
-		color: rgba(255,255,255,0.7);
-		background: rgba(255,255,255,0.03);
-	}
-
-	.game-tab.active {
-		color: #fff;
-		border-bottom-color: #10b981;
-		background: rgba(16,185,129,0.08);
-	}
 
 	.sidebar-content {
 		flex: 1;
