@@ -1,18 +1,17 @@
 <script lang="ts">
-	import TelemetryWidget from './TelemetryWidget.svelte';
-	import { gearLabel, formatName, type Sample } from '$lib/utils';
+	import TelemetryWidget from '$lib/components/analysis/components/telemetry/TelemetryWidget.svelte';
+	import { formatName } from '$lib/utils';
 	import type { Lap } from '$lib/api';
-	import type { CompLap } from '$lib/analysis/state';
+	import type { DriverTelemetry } from '$lib/components/analysis/state';
 
 	interface Props {
-		comp:       CompLap | null;
-		sample:     Sample | null;
+		driver:     DriverTelemetry | null;
 		candidates: Lap[];
 		onPick:     (lap: Lap) => void;
 		onRemove:   () => void;
 	}
 
-	let { comp, sample, candidates, onPick, onRemove }: Props = $props();
+	let { driver, candidates, onPick, onRemove }: Props = $props();
 
 	let menuOpen = $state(false);
 
@@ -22,20 +21,9 @@
 	}
 </script>
 
-{#if comp && sample}
+{#if driver}
 	<div class="comp-slot">
-		<TelemetryWidget
-			name={comp.lap.player_name || 'Reference'}
-			color={comp.color}
-			stint={1}
-			lap={comp.lap.completed_laps ?? 1}
-			lapTime={comp.lap.lap_time ?? '—'}
-			throttle={sample.throttle}
-			brake={sample.brake}
-			speed={sample.speed}
-			gear={gearLabel(sample.gear)}
-			rpm={sample.rpm}
-		/>
+		<TelemetryWidget {driver} />
 		<button class="comp-remove" onclick={onRemove} aria-label="Remove comparison">×</button>
 	</div>
 {:else}

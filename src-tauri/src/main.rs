@@ -80,6 +80,19 @@ static BACKEND_BYTES: &[u8] = include_bytes!(
 
 struct BackendProcess(Mutex<Option<Child>>);
 
+fn quit_app(app: &tauri::AppHandle) {
+    if let Some(mut child) = app.state::<BackendProcess>().0.lock().unwrap().take() {
+        let _ = child.kill();
+        let _ = child.wait();
+    }
+    app.exit(0);
+}
+
+#[tauri::command]
+fn quit(app: tauri::AppHandle) {
+    quit_app(&app);
+}
+
 #[cfg(windows)]
 fn assign_to_job_object(child: &Child) {
     use std::os::windows::io::AsRawHandle;
@@ -141,6 +154,7 @@ fn wait_for_backend(url: &str, timeout_secs: u64) -> bool {
 fn main() {
     tauri::Builder::default()
         .manage(BackendProcess(Mutex::new(None)))
+        .invoke_handler(tauri::generate_handler![quit])
         .setup(|app| {
             #[cfg(windows)]
             {
@@ -193,11 +207,7 @@ fn main() {
                         }
                     }
                     "quit" => {
-                        if let Some(mut child) = app.state::<BackendProcess>().0.lock().unwrap().take() {
-                            let _ = child.kill();
-                            let _ = child.wait();
-                        }
-                        app.exit(0);
+                        quit_app(app);
                     }
                     _ => {}
                 })

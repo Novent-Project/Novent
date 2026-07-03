@@ -1,29 +1,22 @@
 <script lang="ts">
-	import { gameShort, formatName } from '$lib/utils';
+	import { gameShort, formatName, formatDateTime } from '$lib/utils';
+	import type { Lap } from '$lib/api';
 
 	interface Props {
-		car: string;
-		track: string;
-		game: string;
-		dateTime: string;
-		airTemp?: number;
-		roadTemp?: number;
-		mode?: string;
+		lap: Lap | null;
 		onPlay?: () => void;
 		onSetup?: () => void;
 	}
 
-	let {
-		car,
-		track,
-		game,
-		dateTime,
-		airTemp,
-		roadTemp,
-		mode,
-		onPlay,
-		onSetup
-	}: Props = $props();
+	let { lap, onPlay, onSetup }: Props = $props();
+
+	let car      = $derived(lap?.car ?? '');
+	let track    = $derived(lap?.track ?? '');
+	let game     = $derived(lap?.game ?? '');
+	let dateTime = $derived(formatDateTime(lap?.date_time));
+	let airTemp  = $derived(lap?.air_temp);
+	let roadTemp = $derived(lap?.road_temp);
+	let mode     = $derived(lap?.session_type || lap?.tyre_compound || undefined);
 </script>
 
 <div class="hud-card session-header">

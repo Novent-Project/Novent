@@ -1,5 +1,5 @@
 <script lang="ts">
-	import PastSessions from '$lib/analysis/components/PastSessions.svelte';
+	import PastSessions from '$lib/components/analysis/components/session/PastSessions.svelte';
 	import { formatDateTime } from '$lib/utils';
 	import type { DataState } from '$lib/state/data.svelte';
 

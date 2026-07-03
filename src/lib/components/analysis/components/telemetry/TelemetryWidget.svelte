@@ -1,56 +1,38 @@
 <script lang="ts">
+	import type { DriverTelemetry } from '$lib/components/analysis/state';
+
 	interface Props {
-		name: string;
-		color: string;
-		stint: number;
-		lap: number;
-		lapTime: string;
-		throttle: number;
-		brake: number;
-		speed: number;
-		gear: number | string;
-		rpm: number;
+		driver: DriverTelemetry;
 	}
 
-	let {
-		name,
-		color,
-		stint,
-		lap,
-		lapTime,
-		throttle,
-		brake,
-		speed,
-		gear,
-		rpm
-	}: Props = $props();
+	let { driver }: Props = $props();
 
-	let throttlePct = $derived(Math.round((throttle ?? 0) * 100));
-	let brakePct = $derived(Math.round((brake ?? 0) * 100));
+	let throttlePct = $derived(Math.round((driver.throttle ?? 0) * 100));
+	let brakePct = $derived(Math.round((driver.brake ?? 0) * 100));
 </script>
 
 <div class="hud-card widget">
 	<div class="left">
-		<div class="avatar" style="border-color: {color};">
-			<svg viewBox="0 0 16 16" fill="none" stroke={color} stroke-width="1.5" style="color: {color};">
-				<path d="M6 2h4l1.2 3.5H4.8L6 2Z" fill={color} stroke="none" />
-				<rect x="3.5" y="5" width="9" height="8" rx="2" fill={color} stroke="none" />
-				<rect x="2" y="6.5" width="1.6" height="3" rx="0.6" fill={color} stroke="none" />
-				<rect x="12.4" y="6.5" width="1.6" height="3" rx="0.6" fill={color} stroke="none" />
+		<div class="avatar" style="border-color: {driver.color};">
+			<svg viewBox="0 0 16 16" fill="none" stroke={driver.color} stroke-width="1.5" style="color: {driver.color};">
+				<path d="M6 2h4l1.2 3.5H4.8L6 2Z" fill={driver.color} stroke="none" />
+				<rect x="3.5" y="5" width="9" height="8" rx="2" fill={driver.color} stroke="none" />
+				<rect x="2" y="6.5" width="1.6" height="3" rx="0.6" fill={driver.color} stroke="none" />
+				<rect x="12.4" y="6.5" width="1.6" height="3" rx="0.6" fill={driver.color} stroke="none" />
 			</svg>
 		</div>
 		<div class="who">
-			<div class="name" style="color: {color};">{name}</div>
+			<div class="name" style="color: {driver.color};">{driver.name}</div>
 			<div class="sub">
 				<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
 					<circle cx="8" cy="8" r="6" />
 					<path d="M8 5v3l2 1.5" stroke-linecap="round" stroke-linejoin="round" />
 				</svg>
-				<span>Stint {stint}</span>
-				<span>Lap {lap}</span>
+				<span>Stint {driver.stint}</span>
+				<span>Lap {driver.lap}</span>
 			</div>
 		</div>
-		<div class="lap-time mono">{lapTime}</div>
+		<div class="lap-time mono">{driver.lapTime}</div>
 	</div>
 
 	<div class="right">
@@ -69,7 +51,7 @@
 		</div>
 
 		<div class="stat">
-			<span class="value mono">{Math.round(speed)}</span>
+			<span class="value mono">{Math.round(driver.speed)}</span>
 			<span class="unit">km/h</span>
 		</div>
 
@@ -80,13 +62,13 @@
 					<path d="M3 8h8" stroke-linecap="round" />
 					<path d="M9 5.5 11.5 8 9 10.5" stroke-linecap="round" stroke-linejoin="round" />
 				</svg>
-				{gear}
+				{driver.gear}
 			</span>
 			<span class="unit">GEAR</span>
 		</div>
 
 		<div class="stat">
-			<span class="value mono">{rpm}</span>
+			<span class="value mono">{driver.rpm}</span>
 			<span class="unit">RPM</span>
 		</div>
 	</div>

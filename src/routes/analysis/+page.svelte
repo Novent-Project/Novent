@@ -1,11 +1,10 @@
 <script lang="ts">
 	import { getContext, onMount } from 'svelte';
-	import SessionsView from '$lib/analysis/SessionsView.svelte';
-	import TelemetryView from '$lib/analysis/TelemetryView.svelte';
-	import SessionTabs from '$lib/analysis/components/SessionTabs.svelte';
+	import SessionsView from '$lib/components/analysis/SessionsView.svelte';
+	import TelemetryView from '$lib/components/analysis/TelemetryView.svelte';
+	import SessionTabs from '$lib/components/analysis/components/session/SessionTabs.svelte';
 	import Settings from '$lib/components/settings/Settings.svelte';
-	import AnalysisFooter from '$lib/analysis/components/AnalysisFooter.svelte';
-	import { UiState, AnalysisState, MapView } from '$lib/analysis/state';
+	import { UiState, AnalysisState, MapView } from '$lib/components/analysis/state';
 	import type { DataState } from '$lib/state/data.svelte';
 	import { formatName } from '$lib/utils';
 
@@ -73,11 +72,6 @@
 	{:else}
 		<TelemetryView {analysis} {map} {ui} />
 	{/if}
-
-	<AnalysisFooter
-		status={analysis.selectedLap ? `${data.game ?? 'Session'} — Analyzing` : 'Waiting for Session...'}
-		active={data.connected}
-	/>
 </div>
 
 <style>

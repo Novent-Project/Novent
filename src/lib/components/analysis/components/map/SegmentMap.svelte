@@ -1,15 +1,19 @@
 <script lang="ts">
+	import type { AnalysisState } from '$lib/components/analysis/state';
+
 	interface Props {
-		worldX:         number[];
-		worldZ:         number[];
-		normPos:        number[];
-		segments?:      number;
-		currentSegment: number;
-		label:          string;
-		delta:          number;
+		analysis: AnalysisState;
 	}
 
-	let { worldX, worldZ, normPos, segments = 8, currentSegment, label, delta }: Props = $props();
+	let { analysis }: Props = $props();
+
+	let worldX         = $derived(analysis.currentTrace.worldX);
+	let worldZ         = $derived(analysis.currentTrace.worldZ);
+	let normPos        = $derived(analysis.currentTrace.normPos);
+	let segments       = $derived(analysis.segments);
+	let currentSegment = $derived(analysis.currentSegment);
+	let delta          = $derived(analysis.segDelta);
+	let label          = $derived(`Segment ${analysis.currentSegment + 1}`);
 
 	let canvas = $state<HTMLCanvasElement | null>(null);
 	let boxW   = $state(0);

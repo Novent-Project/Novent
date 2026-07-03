@@ -18,7 +18,8 @@
         "resizable": true,
         "fullscreen": false,
         "center": true,
-        "backgroundColor": "#08090b"
+        "backgroundColor": "#08090b",
+        "decorations": false
       }
     ],
     "security": {

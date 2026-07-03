@@ -1,41 +1,16 @@
 <script lang="ts">
 	import { formatTime } from '$lib/utils';
+	import type { AnalysisState } from '$lib/components/analysis/state';
 
 	interface Props {
-		playing: boolean;
-		time: number;
-		total: number;
-		delta: number;
-		distance: number;
-		mode: 'time' | 'distance';
-		showGhost: boolean;
-		onPlay: () => void;
-		onStepBack: () => void;
-		onStepFwd: () => void;
-		onSeek: (t: number) => void;
-		onMode: (m: 'time' | 'distance') => void;
-		onToggleGhost: () => void;
+		analysis: AnalysisState;
 	}
 
-	let {
-		playing,
-		time,
-		total,
-		delta,
-		distance,
-		mode,
-		showGhost,
-		onPlay,
-		onStepBack,
-		onStepFwd,
-		onSeek,
-		onMode,
-		onToggleGhost
-	}: Props = $props();
+	let { analysis }: Props = $props();
 
-	let pct = $derived(total > 0 ? (time / total) * 100 : 0);
-	let deltaText = $derived(`${delta >= 0 ? '+' : ''}${delta.toFixed(3)}`);
-	let distanceText = $derived(`${distance >= 0 ? '+' : ''}${Math.round(distance)} m`);
+	let pct = $derived(analysis.resolvedLapTime > 0 ? (analysis.currentTime / analysis.resolvedLapTime) * 100 : 0);
+	let deltaText = $derived(`${analysis.liveDeltaValue >= 0 ? '+' : ''}${analysis.liveDeltaValue.toFixed(3)}`);
+	let distanceText = $derived(`${analysis.distanceGap >= 0 ? '+' : ''}${Math.round(analysis.distanceGap)} m`);
 </script>
 
 <div class="playbar">
@@ -43,16 +18,16 @@
 		class="scrubber"
 		type="range"
 		min="0"
-		max={total}
+		max={analysis.resolvedLapTime}
 		step="0.01"
-		value={time}
+		value={analysis.currentTime}
 		style="--pct:{pct}%"
-		oninput={(e) => onSeek(+(e.currentTarget as HTMLInputElement).value)}
+		oninput={(e) => analysis.seek(+(e.currentTarget as HTMLInputElement).value)}
 	/>
 
 	<div class="cluster left">
-		<button class="play" onclick={onPlay} aria-label={playing ? 'Pause' : 'Play'}>
-			{#if playing}
+		<button class="play" onclick={() => analysis.togglePlayback()} aria-label={analysis.isPlaying ? 'Pause' : 'Play'}>
+			{#if analysis.isPlaying}
 				<svg viewBox="0 0 16 16" fill="currentColor">
 					<rect x="4" y="3" width="3" height="10" rx="1" />
 					<rect x="9" y="3" width="3" height="10" rx="1" />
@@ -64,27 +39,27 @@
 			{/if}
 		</button>
 
-		<button class="icon-btn" onclick={onStepBack} aria-label="Step back">
+		<button class="icon-btn" onclick={() => analysis.seek(analysis.currentTime - 1)} aria-label="Step back">
 			<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
 				<path d="M11 4l-5 4 5 4" stroke-linecap="round" stroke-linejoin="round" />
 				<path d="M5 4v8" stroke-linecap="round" />
 			</svg>
 		</button>
 
-		<button class="icon-btn" onclick={onStepFwd} aria-label="Step forward">
+		<button class="icon-btn" onclick={() => analysis.seek(analysis.currentTime + 1)} aria-label="Step forward">
 			<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
 				<path d="M5 4l5 4-5 4" stroke-linecap="round" stroke-linejoin="round" />
 				<path d="M11 4v8" stroke-linecap="round" />
 			</svg>
 		</button>
 
-		<span class="time mono">{formatTime(time)}</span>
+		<span class="time mono">{formatTime(analysis.currentTime)}</span>
 	</div>
 
 	<div class="cluster center">
 		<span class="stat">
 			<span class="label">Delta:</span>
-			<span class="mono" style="color:{delta > 0 ? 'var(--color-red)' : 'var(--color-accent)'}"
+			<span class="mono" style="color:{analysis.liveDeltaValue > 0 ? 'var(--color-red)' : 'var(--color-accent)'}"
 				>{deltaText}</span
 			>
 		</span>
@@ -107,18 +82,18 @@
 	<div class="cluster right">
 		<button
 			class="toggle"
-			class:on={showGhost}
-			onclick={onToggleGhost}
+			class:on={analysis.showGhost}
+			onclick={() => analysis.toggleGhost()}
 			role="switch"
-			aria-checked={showGhost}
+			aria-checked={analysis.showGhost}
 			aria-label="Toggle ghost"
 		>
 			<span class="knob"></span>
 		</button>
 
 		<div class="segment">
-			<button class:active={mode === 'time'} onclick={() => onMode('time')}>Time</button>
-			<button class:active={mode === 'distance'} onclick={() => onMode('distance')}>Distance</button>
+			<button class:active={analysis.playMode === 'time'} onclick={() => analysis.setPlayMode('time')}>Time</button>
+			<button class:active={analysis.playMode === 'distance'} onclick={() => analysis.setPlayMode('distance')}>Distance</button>
 		</div>
 	</div>
 </div>

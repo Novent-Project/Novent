@@ -4,7 +4,7 @@ import { smoothBoundary } from '$lib/canvas/map';
 import {
 	EMPTY_TRACE, makeTrace, sampleAt, lapLength, traceIndexAtTime,
 	sectorDurations, segmentIndex, segmentDelta, liveDelta,
-	parseLapTime, formatTime, formatSector, type Sample,
+	parseLapTime, formatTime, formatSector, gearLabel, type Sample,
 } from '$lib/utils';
 import type { DataState } from '$lib/state/data.svelte.js';
 
@@ -33,8 +33,35 @@ export interface SectorRow {
 	delta?: number;
 }
 
-const SEGMENTS   = 8;
-const COMP_COLOR = '#e5e7eb';
+export interface DriverTelemetry {
+	name:     string;
+	color:    string;
+	stint:    number;
+	lap:      number;
+	lapTime:  string;
+	throttle: number;
+	brake:    number;
+	speed:    number;
+	gear:     number | string;
+	rpm:      number;
+}
+
+const SEGMENTS    = 8;
+const COMP_COLOR  = '#e5e7eb';
+const DRIVER_COLOR = '#10b981';
+
+function buildDriverTelemetry(
+	name: string, color: string, lapNum: number, lapTime: string, sample: Sample,
+): DriverTelemetry {
+	return {
+		name, color, stint: 1, lap: lapNum, lapTime,
+		throttle: sample.throttle,
+		brake:    sample.brake,
+		speed:    sample.speed,
+		gear:     gearLabel(sample.gear),
+		rpm:      sample.rpm,
+	};
+}
 
 export class AnalysisState {
 	readonly segments = SEGMENTS;
@@ -75,6 +102,28 @@ export class AnalysisState {
 	compSample = $derived.by((): Sample | null => {
 		const c = this.compLaps[0];
 		return c && this.compIdxNow >= 0 ? sampleAt(c.trace, this.compIdxNow) : null;
+	});
+
+	primaryDriver = $derived.by((): DriverTelemetry =>
+		buildDriverTelemetry(
+			this.driverName,
+			DRIVER_COLOR,
+			this.selectedLap?.completed_laps ?? 1,
+			this.selectedLap?.lap_time ?? '—',
+			this.primarySample,
+		)
+	);
+
+	compDriver = $derived.by((): DriverTelemetry | null => {
+		const c = this.compLaps[0];
+		if (!c || !this.compSample) return null;
+		return buildDriverTelemetry(
+			c.lap.player_name || 'Reference',
+			c.color,
+			c.lap.completed_laps ?? 1,
+			c.lap.lap_time ?? '—',
+			this.compSample,
+		);
 	});
 
 	segDelta = $derived.by(() => {
