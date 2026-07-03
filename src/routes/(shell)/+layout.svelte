@@ -1,6 +1,5 @@
 <script lang="ts">
 	import TopNav from '$lib/components/layout/TopNav.svelte';
-	import RaceEngineerFooter from '$lib/components/hud/RaceEngineerFooter.svelte';
 
 	let { children } = $props();
 </script>
@@ -10,7 +9,6 @@
 	<main class="shell-main">
 		{@render children()}
 	</main>
-	<RaceEngineerFooter status="Waiting for Session..." active={false} />
 </div>
 
 <style>

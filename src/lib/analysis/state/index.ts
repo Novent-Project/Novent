@@ -1,5 +1,4 @@
 export { UiState, type View } from './ui.svelte.js';
-export { DataState } from './data.svelte.js';
 export {
 	AnalysisState,
 	type CompLap,

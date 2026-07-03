@@ -7,16 +7,16 @@
 	let { status, active = false }: Props = $props();
 </script>
 
-<footer class="engineer-footer">
+<footer class="analysis-footer">
 	<div class="row">
-		<span class="title">Race Engineer</span>
+		<span class="title">Analysis</span>
 		<span class="dot" class:active></span>
 		<span class="status mono">{status || '—'}</span>
 	</div>
 </footer>
 
 <style>
-	.engineer-footer {
+	.analysis-footer {
 		width: 100%;
 		height: 44px;
 		display: flex;

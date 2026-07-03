@@ -1,15 +1,16 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import Splashscreen from '$lib/components/layout/Splashscreen.svelte';
-	import Header from '$lib/components/layout/Header.svelte';
+	import { getContext, onMount } from 'svelte';
+	import SessionsView from '$lib/analysis/SessionsView.svelte';
+	import TelemetryView from '$lib/analysis/TelemetryView.svelte';
+	import SessionTabs from '$lib/analysis/components/SessionTabs.svelte';
 	import Settings from '$lib/components/settings/Settings.svelte';
-	import SessionsView from './views/SessionsView.svelte';
-	import TelemetryView from './views/TelemetryView.svelte';
-	import { UiState, DataState, AnalysisState, MapView } from './state';
+	import AnalysisFooter from '$lib/analysis/components/AnalysisFooter.svelte';
+	import { UiState, AnalysisState, MapView } from '$lib/analysis/state';
+	import type { DataState } from '$lib/state/data.svelte';
 	import { formatName } from '$lib/utils';
 
+	const data = getContext<DataState>('data');
 	const ui       = new UiState();
-	const data     = new DataState();
 	const analysis = new AnalysisState(data);
 	const map      = new MapView();
 
@@ -44,21 +45,17 @@
 
 	onMount(() => {
 		window.addEventListener('keydown', ui.handleKeydown);
-		data.start();
 		return () => {
 			window.removeEventListener('keydown', ui.handleKeydown);
-			data.destroy();
 			analysis.destroy();
 			map.destroy();
 		};
 	});
 </script>
 
-<Splashscreen ready={data.loaded} />
-
 <div
-	class="app"
-	style="transform: scale({ui.appZoom}); transform-origin: 0 0; width: {100 / ui.appZoom}%; height: {100 / ui.appZoom}vh;"
+	class="analysis"
+	style="transform: scale({ui.appZoom}); transform-origin: 0 0; width: {100 / ui.appZoom}%; height: {100 / ui.appZoom}%;"
 >
 	{#if ui.showSettings}
 		<Settings
@@ -69,30 +66,25 @@
 		/>
 	{/if}
 
-	<Header
-		{tabs}
-		connected={data.connected}
-		game={data.game}
-		onSelect={selectTab}
-		onNew={() => ui.showSessions()}
-		onClose={closeTab}
-	/>
+	<SessionTabs {tabs} onSelect={selectTab} onNew={() => ui.showSessions()} onClose={closeTab} />
 
 	{#if ui.view === 'sessions'}
 		<SessionsView {data} onOpen={openSession} onToggleFavorite={(uuid) => data.toggleFavorite(uuid)} />
 	{:else}
 		<TelemetryView {analysis} {map} {ui} />
 	{/if}
+
+	<AnalysisFooter
+		status={analysis.selectedLap ? `${data.game ?? 'Session'} — Analyzing` : 'Waiting for Session...'}
+		active={data.connected}
+	/>
 </div>
 
 <style>
-	.app {
-		position: relative;
+	.analysis {
 		display: flex;
 		flex-direction: column;
-		height: 100vh;
-		width: 100vw;
-		overflow: hidden;
-		background: var(--color-bg);
+		height: 100%;
+		min-height: 0;
 	}
 </style>

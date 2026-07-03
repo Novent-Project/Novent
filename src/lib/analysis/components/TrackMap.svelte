@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { drawMap } from '$lib/canvas/map';
-	import type { AnalysisState, MapView } from '$lib/app/state';
+	import type { AnalysisState, MapView } from '$lib/analysis/state';
 
 	interface Props {
 		analysis: AnalysisState;

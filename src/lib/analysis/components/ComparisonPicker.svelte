@@ -2,7 +2,7 @@
 	import TelemetryWidget from './TelemetryWidget.svelte';
 	import { gearLabel, formatName, type Sample } from '$lib/utils';
 	import type { Lap } from '$lib/api';
-	import type { CompLap } from '$lib/app/state';
+	import type { CompLap } from '$lib/analysis/state';
 
 	interface Props {
 		comp:       CompLap | null;

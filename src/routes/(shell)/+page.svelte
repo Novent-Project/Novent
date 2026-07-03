@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { fetchLaps, type Lap } from '$lib/api';
+	import { getContext } from 'svelte';
+	import type { DataState } from '$lib/state/data.svelte';
 	import { formatDriveTime } from '$lib/utils';
 	import StatCard from '$lib/components/dashboard/StatCard.svelte';
 	import UnlockCard from '$lib/components/dashboard/UnlockCard.svelte';
@@ -8,35 +8,27 @@
 	import MostUsedCarCard from '$lib/components/dashboard/MostUsedCarCard.svelte';
 	import WeeklyActivityCard from '$lib/components/dashboard/WeeklyActivityCard.svelte';
 
-	let laps = $state<Lap[]>([]);
+	const data = getContext<DataState>('data');
 
-	onMount(async () => {
-		try {
-			laps = await fetchLaps();
-		} catch {
-			/* backend offline — dashboard shows the empty state */
-		}
-	});
-
-	let monthlyLaps = $derived(laps.length);
-	let monthlyTime = $derived(formatDriveTime(laps.reduce((sum, l) => sum + (l.lap_time_ms ?? 0), 0)));
+	let monthlyLaps = $derived(data.laps.length);
+	let monthlyTime = $derived(formatDriveTime(data.laps.reduce((sum, l) => sum + (l.lap_time_ms ?? 0), 0)));
 
 	let latest = $derived(
-		laps[0]
+		data.laps[0]
 			? {
-					car:     laps[0].car,
-					track:   laps[0].track,
-					game:    laps[0].game,
-					type:    laps[0].session_type,
-					bestLap: laps[0].lap_time,
+					car:     data.laps[0].car,
+					track:   data.laps[0].track,
+					game:    data.laps[0].game,
+					type:    data.laps[0].session_type,
+					bestLap: data.laps[0].lap_time,
 				}
 			: null
 	);
 
 	let mostUsedCar = $derived.by(() => {
-		if (!laps.length) return null;
+		if (!data.laps.length) return null;
 		const counts = new Map<string, number>();
-		for (const l of laps) counts.set(l.car, (counts.get(l.car) ?? 0) + 1);
+		for (const l of data.laps) counts.set(l.car, (counts.get(l.car) ?? 0) + 1);
 		return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
 	});
 
@@ -52,13 +44,13 @@
 
 	<div class="c-laps"><StatCard icon="flag" label="Monthly Laps" value={String(monthlyLaps)} /></div>
 	<div class="c-time"><StatCard icon="clock" label="Monthly Time Driven" value={monthlyTime} /></div>
-	<div class="c-unlock"><UnlockCard title="Unlock Setups & Advanced Tools" /></div>
+	<div class="c-unlock"><UnlockCard title="Unlock Advanced Analysis Tools" /></div>
 
 	<section class="hero">
 		<h1>Performance Tools</h1>
-		<p>Head to the <a href="/race-engineer">Race Engineer</a> tab to start logging data.</p>
-		<a class="cta" href="/race-engineer">
-			Open Race Engineer
+		<p>Head to the <a href="/analysis">Analysis</a> tab to start logging data.</p>
+		<a class="cta" href="/analysis">
+			Open Analysis
 			<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
 				<path d="M3 8h10M9 4l4 4-4 4" stroke-linecap="round" stroke-linejoin="round" />
 			</svg>

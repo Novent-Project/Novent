@@ -1,7 +1,7 @@
 <script lang="ts">
-	import PastSessions from '$lib/components/hud/PastSessions.svelte';
+	import PastSessions from '$lib/analysis/components/PastSessions.svelte';
 	import { formatDateTime } from '$lib/utils';
-	import type { DataState } from '$lib/app/state';
+	import type { DataState } from '$lib/state/data.svelte';
 
 	interface Props {
 		data:             DataState;

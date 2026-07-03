@@ -6,7 +6,7 @@ import {
 	sectorDurations, segmentIndex, segmentDelta, liveDelta,
 	parseLapTime, formatTime, formatSector, type Sample,
 } from '$lib/utils';
-import type { DataState } from './data.svelte.js';
+import type { DataState } from '$lib/state/data.svelte.js';
 
 export interface CompLap {
 	lap:     Lap;

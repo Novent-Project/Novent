@@ -7,9 +7,11 @@
 
 	const MIN_MS  = 4000;
 	const FADE_MS = 650;
+	const SKIP_MS = 5000;
 
-	let hiding = $state(false);
-	let gone   = $state(false);
+	let hiding   = $state(false);
+	let gone     = $state(false);
+	let showSkip = $state(false);
 
 	$effect(() => {
 		if (!ready || hiding) return;
@@ -19,10 +21,20 @@
 	});
 
 	$effect(() => {
+		if (hiding) return;
+		const timer = setTimeout(() => (showSkip = true), SKIP_MS);
+		return () => clearTimeout(timer);
+	});
+
+	$effect(() => {
 		if (!hiding) return;
 		const timer = setTimeout(() => (gone = true), FADE_MS);
 		return () => clearTimeout(timer);
 	});
+
+	function skip() {
+		hiding = true;
+	}
 </script>
 
 {#if !gone}
@@ -43,8 +55,11 @@
 				</svg>
 				<span class="name">Novent</span>
 			</div>
-			<span class="tag">Starting telemetry engine</span>
+			<span class="tag">{showSkip ? 'Still reaching the backend…' : 'Starting telemetry engine'}</span>
 			<div class="bar"></div>
+			{#if showSkip}
+				<button class="skip-btn" onclick={skip}>Continue without backend</button>
+			{/if}
 		</div>
 	</div>
 {/if}
@@ -155,6 +170,26 @@
 		animation: sweep 1.15s ease-in-out infinite;
 	}
 
+	.skip-btn {
+		margin-top: 6px;
+		padding: 7px 16px;
+		border-radius: 999px;
+		border: 1px solid rgba(255, 255, 255, 0.12);
+		background: rgba(255, 255, 255, 0.04);
+		color: rgba(255, 255, 255, 0.55);
+		font-size: 11px;
+		font-family: inherit;
+		cursor: pointer;
+		transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+		animation: rise 0.4s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+	}
+
+	.skip-btn:hover {
+		color: #fff;
+		border-color: rgba(255, 255, 255, 0.24);
+		background: rgba(255, 255, 255, 0.08);
+	}
+
 	@keyframes road {
 		to { background-position: 41% 0, 59% 0, 50% 94px; }
 	}
@@ -173,5 +208,6 @@
 		.road { animation: none; }
 		.brand { animation: none; }
 		.bar::before { animation: none; width: 100%; }
+		.skip-btn { animation: none; }
 	}
 </style>

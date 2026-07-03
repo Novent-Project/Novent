@@ -1,17 +1,16 @@
 <script lang="ts">
-	import TrackMap from '$lib/components/hud/TrackMap.svelte';
-	import SessionHeaderCard from '$lib/components/hud/SessionHeaderCard.svelte';
-	import StandingsCard from '$lib/components/hud/StandingsCard.svelte';
-	import TelemetryWidget from '$lib/components/hud/TelemetryWidget.svelte';
-	import ComparisonPicker from '$lib/components/hud/ComparisonPicker.svelte';
-	import SegmentMap from '$lib/components/hud/SegmentMap.svelte';
-	import SectorComparison from '$lib/components/hud/SectorComparison.svelte';
-	import IconRail from '$lib/components/hud/IconRail.svelte';
-	import ZoomControl from '$lib/components/hud/ZoomControl.svelte';
-	import HudPlaybar from '$lib/components/hud/HudPlaybar.svelte';
-	import RaceEngineerFooter from '$lib/components/hud/RaceEngineerFooter.svelte';
+	import TrackMap from '$lib/analysis/components/TrackMap.svelte';
+	import SessionHeaderCard from '$lib/analysis/components/SessionHeaderCard.svelte';
+	import StandingsCard from '$lib/analysis/components/StandingsCard.svelte';
+	import TelemetryWidget from '$lib/analysis/components/TelemetryWidget.svelte';
+	import ComparisonPicker from '$lib/analysis/components/ComparisonPicker.svelte';
+	import SegmentMap from '$lib/analysis/components/SegmentMap.svelte';
+	import SectorComparison from '$lib/analysis/components/SectorComparison.svelte';
+	import IconRail from '$lib/analysis/components/IconRail.svelte';
+	import ZoomControl from '$lib/analysis/components/ZoomControl.svelte';
+	import HudPlaybar from '$lib/analysis/components/HudPlaybar.svelte';
 	import { gearLabel, formatDateTime } from '$lib/utils';
-	import { ZOOM_UI_MIN, ZOOM_UI_MAX, type AnalysisState, type MapView, type UiState } from '$lib/app/state';
+	import { ZOOM_UI_MIN, ZOOM_UI_MAX, type AnalysisState, type MapView, type UiState } from '$lib/analysis/state';
 
 	interface Props {
 		analysis: AnalysisState;
@@ -120,8 +119,6 @@
 		onMode={(m) => analysis.setPlayMode(m)}
 		onToggleGhost={() => analysis.toggleGhost()}
 	/>
-
-	<RaceEngineerFooter status="Waiting for Session..." active={false} />
 </div>
 
 <style>
