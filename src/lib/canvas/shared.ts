@@ -6,6 +6,9 @@ export interface Trace {
 	worldX:  number[];
 	worldZ:  number[];
 	time:    number[];
+	speed:   number[];
+	gear:    number[];
+	rpm:     number[];
 }
 
 export interface DownsampledTrace {

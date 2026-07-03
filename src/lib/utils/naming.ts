@@ -30,8 +30,8 @@ export function gameShort(key: string): string {
 
 export function formatName(raw: string): string {
 	if (!raw) return 'Unknown';
-	const lower = raw.toLowerCase();
-	if (NAME_OVERRIDES[lower]) return NAME_OVERRIDES[lower];
+	const override = NAME_OVERRIDES[raw.toLowerCase()];
+	if (override) return override;
 	return raw
 		.replace(/^(ks_|acu_|rt_)/i, '')
 		.split('_')
@@ -39,22 +39,6 @@ export function formatName(raw: string): string {
 		.join(' ');
 }
 
-export function parseLapTime(t: string | number): number {
-	if (!t) return 0;
-	if (typeof t === 'number') return t > 3600 ? t / 1000 : t;
-	const s = String(t).trim();
-	if (/^\d+$/.test(s)) return parseInt(s, 10) / 1000;
-	if (/^\d+\.\d+$/.test(s)) {
-		const v = parseFloat(s);
-		return v > 3600 ? v / 1000 : v;
-	}
-	const m = s.match(/^(\d+):(\d+)[.:](\d+)$/);
-	if (m) return parseInt(m[1]) * 60 + parseInt(m[2]) + parseInt(m[3]) / 1000;
-	return parseFloat(s) || 0;
-}
-
-export function formatTime(s: number): string {
-	const c = Math.max(0, s);
-	const m = Math.floor(c / 60);
-	return `${m}:${(c % 60).toFixed(2).padStart(5, '0')}`;
+export function formatDateTime(dt?: string): string {
+	return dt ? dt.replace('_', ' ') : '—';
 }

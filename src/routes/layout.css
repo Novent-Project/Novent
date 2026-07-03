@@ -19,6 +19,20 @@
 	--color-red:       #ef4444;
 	--color-amber:     #f59e0b;
 	--color-violet:    #8b5cf6;
+
+	--color-primary:   #10b981;
+	--color-compare:   #e5e7eb;
+
+	--radius-card:  16px;
+	--radius-sm:    9px;
+	--radius-pill:  9999px;
+
+	--card-bg:        rgba(255, 255, 255, 0.025);
+	--card-bg-hover:  rgba(255, 255, 255, 0.045);
+	--card-border:    rgba(255, 255, 255, 0.07);
+	--card-shadow:    0 10px 30px rgba(0, 0, 0, 0.35);
+
+	--hud-gap: 14px;
 }
 
 html, body {
@@ -63,4 +77,25 @@ div#svelte {
 
 ::-webkit-scrollbar-thumb:hover {
 	background: rgba(16, 185, 129, 0.35);
+}
+
+/* HUD shared utilities (used across widget components) */
+.hud-card {
+	background: var(--card-bg);
+	border: 1px solid var(--card-border);
+	border-radius: var(--radius-card);
+	box-shadow: var(--card-shadow);
+}
+
+.hud-eyebrow {
+	font-size: 10px;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+	color: var(--color-muted);
+	font-weight: 600;
+}
+
+.mono {
+	font-family: var(--font-mono);
+	font-variant-numeric: tabular-nums;
 }

@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { gameLabel } from '$lib/utils/format.js';
-	import { saveConfig } from '$lib/api.js';
+	import { gameLabel } from '$lib/utils';
+	import { saveConfig } from '$lib/api';
 
 	interface Props {
 		gamePaths: Record<string, string>;

@@ -1,0 +1,15 @@
+import { request, tryRequest } from './client.js';
+import type { Lap, Telemetry, TrackBoundaries } from './types.js';
+
+export function fetchLaps(): Promise<Lap[]> {
+	return request<Lap[]>('/laps');
+}
+
+export function fetchTelemetry(uuid: string): Promise<Telemetry> {
+	return request<Telemetry>(`/laps/${encodeURIComponent(uuid)}/telemetry`);
+}
+
+export function fetchBoundaries(simId: string, trackId: string, uuid: string): Promise<TrackBoundaries | null> {
+	const seg = [simId, trackId, uuid].map(encodeURIComponent).join('/');
+	return tryRequest<TrackBoundaries>(`/boundaries/${seg}`);
+}

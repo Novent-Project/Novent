@@ -1,5 +1,5 @@
 import { distBucket, type DownsampledTrace, type Trace } from './shared.js';
-import type { TrackBoundaries } from '../api.js';
+import type { TrackBoundaries } from '$lib/api';
 
 interface CompLap {
 	trace: Trace;
@@ -113,9 +113,16 @@ export function drawMap(
 		}
 	}
 
-	const total    = trace.worldX.length;
-	const diagLen  = Math.sqrt((Math.max(...trace.worldX) - Math.min(...trace.worldX)) ** 2 + (Math.max(...trace.worldZ) - Math.min(...trace.worldZ)) ** 2);
-	const lineStep = Math.max(1, Math.floor(total / (diagLen * 2)));
+	const total = trace.worldX.length;
+	let bMinX = Infinity, bMaxX = -Infinity, bMinZ = Infinity, bMaxZ = -Infinity;
+	for (let i = 0; i < total; i++) {
+		const x = trace.worldX[i], z = trace.worldZ[i];
+		if (isGarbage(x, z)) continue;
+		if (x < bMinX) bMinX = x; if (x > bMaxX) bMaxX = x;
+		if (z < bMinZ) bMinZ = z; if (z > bMaxZ) bMaxZ = z;
+	}
+	const diagLen  = isFinite(bMinX) ? Math.sqrt((bMaxX - bMinX) ** 2 + (bMaxZ - bMinZ) ** 2) : 1;
+	const lineStep = Math.max(1, Math.floor(total / (Math.max(diagLen, 1) * 2)));
 
 	if (ds) {
 		const dsTotal = ds.gas.length;
