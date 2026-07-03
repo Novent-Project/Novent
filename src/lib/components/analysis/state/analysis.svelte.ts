@@ -177,7 +177,10 @@ export class AnalysisState {
 		this.data.laps.filter(l =>
 			l.uuid !== this.selectedLap?.uuid &&
 			!this.compLaps.some(c => c.lap.uuid === l.uuid) &&
-			(!this.selectedLap || l.track === this.selectedLap.track)
+			(!this.selectedLap || (
+				l.track === this.selectedLap.track &&
+				(l.layout ?? '') === (this.selectedLap.layout ?? '')
+			))
 		)
 	);
 
@@ -202,7 +205,7 @@ export class AnalysisState {
 		this.currentTime     = 0;
 		this.#exactIdx       = 0;
 
-		const fetched = await fetchBoundaries(lap.game || 'ACC', lap.track, lap.uuid);
+		const fetched = await fetchBoundaries(lap.game || 'ACC', lap.track, lap.uuid, lap.layout ?? '');
 		if (token !== this.#token) return;
 		this.boundaries = fetched
 			? { inner: smoothBoundary(fetched.inner), outer: smoothBoundary(fetched.outer) }

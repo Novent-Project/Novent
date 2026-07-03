@@ -9,7 +9,8 @@ export function fetchTelemetry(uuid: string): Promise<Telemetry> {
 	return request<Telemetry>(`/laps/${encodeURIComponent(uuid)}/telemetry`);
 }
 
-export function fetchBoundaries(simId: string, trackId: string, uuid: string): Promise<TrackBoundaries | null> {
+export function fetchBoundaries(simId: string, trackId: string, uuid: string, layout = ''): Promise<TrackBoundaries | null> {
 	const seg = [simId, trackId, uuid].map(encodeURIComponent).join('/');
-	return tryRequest<TrackBoundaries>(`/boundaries/${seg}`);
+	const qs  = layout ? `?layout=${encodeURIComponent(layout)}` : '';
+	return tryRequest<TrackBoundaries>(`/boundaries/${seg}${qs}`);
 }

@@ -4,6 +4,7 @@ export interface Lap {
 	track:    string;
 	car:      string;
 	lap_time: string;
+	layout?:  string;
 	time?:            string;
 	date_time?:       string;
 	session_id?:      string | null;
@@ -21,6 +22,7 @@ export interface Session {
 	id:            string;
 	game:          string;
 	track:         string;
+	layout?:       string;
 	car:           string;
 	player_name:   string;
 	session_type:  string;
