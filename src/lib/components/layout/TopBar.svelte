@@ -1,13 +1,13 @@
 <script lang="ts">
 	import ConnectionStatus from './ConnectionStatus.svelte';
 	import WindowControls from './WindowControls.svelte';
+	import type { DetectionState } from '$lib/api';
 
 	interface Props {
-		connected?: boolean;
-		game?:      string | null;
+		detection: DetectionState;
 	}
 
-	let { connected = false, game = null }: Props = $props();
+	let { detection }: Props = $props();
 </script>
 
 <header class="topbar">
@@ -15,7 +15,7 @@
 
 	<div class="spacer"></div>
 
-	<ConnectionStatus {connected} {game} />
+	<ConnectionStatus {detection} />
 
 	<div class="actions">
 		<div class="icon-slot"></div>

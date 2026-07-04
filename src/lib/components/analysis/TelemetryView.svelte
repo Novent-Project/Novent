@@ -6,7 +6,6 @@
 	import ComparisonPicker from '$lib/components/analysis/components/session/ComparisonPicker.svelte';
 	import SegmentMap from '$lib/components/analysis/components/map/SegmentMap.svelte';
 	import SectorComparison from '$lib/components/analysis/components/results/SectorComparison.svelte';
-	import IconRail from '$lib/components/analysis/components/chrome/IconRail.svelte';
 	import ZoomControl from '$lib/components/analysis/components/map/ZoomControl.svelte';
 	import HudPlaybar from '$lib/components/analysis/components/telemetry/HudPlaybar.svelte';
 	import { ZOOM_UI_MIN, ZOOM_UI_MAX, type AnalysisState, type MapView, type UiState } from '$lib/components/analysis/state';
@@ -19,18 +18,11 @@
 
 	let { analysis, map, ui }: Props = $props();
 
-	let railItems = $derived([
-		{ key: 'flag',      label: 'Sessions',    active: ui.view === 'sessions' },
-		{ key: 'telemetry', label: 'Telemetry',   active: ui.view === 'telemetry' },
-		{ key: 'setup',     label: 'Settings',    active: ui.showSettings },
-		{ key: 'fuel',      label: 'Fuel (soon)', active: false },
-	]);
-
-	function railSelect(key: string) {
-		if (key === 'flag') ui.showSessions();
-		else if (key === 'telemetry') { if (analysis.selectedLap) ui.showTelemetry(); }
-		else if (key === 'setup') ui.openSettings();
-	}
+	// TODO(nav): IconRail removed along with chrome/. Sessions/Telemetry/Settings still
+	// work — closing the lap tab in SessionTabs (see +page.svelte) returns to Sessions,
+	// and Settings opens via SessionHeaderCard's onSetup below — but there's no longer a
+	// persistent, always-visible way to switch modes. That should live in a proper tab
+	// bar once SessionTabs grows Sessions/Settings tabs of its own.
 </script>
 
 <div class="hud">
@@ -62,10 +54,6 @@
 
 		<div class="ov ov-topright">
 			<SegmentMap {analysis} />
-		</div>
-
-		<div class="ov ov-leftrail">
-			<IconRail items={railItems} onSelect={railSelect} />
 		</div>
 
 		<div class="ov ov-bottomleft">
@@ -122,12 +110,6 @@
 		right: 14px;
 		width: 300px;
 		height: 244px;
-	}
-
-	.ov-leftrail {
-		left: 14px;
-		top: 50%;
-		transform: translateY(-50%);
 	}
 
 	.ov-bottomleft {

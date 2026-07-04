@@ -1,5 +1,5 @@
-import { fitMap, calibrateBoundary, type BoundaryFix } from '$lib/canvas/map';
-import type { Trace } from '$lib/canvas/shared';
+import { fitMap, calibrateBoundary, type BoundaryFix } from '$lib/utils/canvas/map';
+import type { Trace } from '$lib/utils/canvas/shared';
 import type { TrackBoundaries } from '$lib/api';
 
 export const ZOOM_UI_MIN = 0.5;

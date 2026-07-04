@@ -1,4 +1,4 @@
-import { fetchLaps, fetchStatus, fetchConfig, type Lap } from '$lib/api';
+import { fetchLaps, fetchStatus, fetchConfig, type Lap, type DetectionState } from '$lib/api';
 
 const LAP_POLL_MS    = 3000;
 const STATUS_POLL_MS = 2000;
@@ -8,9 +8,19 @@ export class DataState {
 	laps      = $state<Lap[]>([]);
 	connected = $state(false);
 	game      = $state<string | null>(null);
+	// Not populated by the backend yet — see BackendStatus.session in api/types.ts.
+	session   = $state<string | null>(null);
 	gamePaths = $state<Record<string, string>>({ AC: '', ACC: '', iRacing: '', LMU: '' });
 	favorites = $state<Set<string>>(new Set());
 	loaded    = $state(false);
+
+	detection: DetectionState = $derived(
+		!this.connected || !this.game
+			? { status: 'idle' }
+			: this.session
+				? { status: 'active', game: this.game, session: this.session }
+				: { status: 'detected', game: this.game }
+	);
 
 	#lapTimer:    ReturnType<typeof setInterval> | null = null;
 	#statusTimer: ReturnType<typeof setInterval> | null = null;
@@ -61,9 +71,11 @@ export class DataState {
 			const s = await fetchStatus();
 			this.connected = s.connected;
 			this.game      = s.game;
+			this.session   = s.session ?? null;
 		} catch {
 			this.connected = false;
 			this.game      = null;
+			this.session   = null;
 		}
 	}
 

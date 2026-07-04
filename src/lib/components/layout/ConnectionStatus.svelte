@@ -1,15 +1,22 @@
 <script lang="ts">
+	import type { DetectionState } from '$lib/api';
+
 	interface Props {
-		connected?: boolean;
-		game?:      string | null;
+		detection: DetectionState;
 	}
 
-	let { connected = false, game = null }: Props = $props();
+	let { detection }: Props = $props();
+
+	let label = $derived(
+		detection.status === 'idle'     ? 'No game detected' :
+		detection.status === 'detected' ? `${detection.game} detected` :
+		/* active */                      `${detection.game} — session active`
+	);
 </script>
 
-<div class="conn">
-	<span class="conn-dot" class:on={connected}></span>
-	<span class="conn-text">{connected ? (game ?? 'Live') : 'Offline'}</span>
+<div class="conn" class:detected={detection.status === 'detected'} class:active={detection.status === 'active'}>
+	<span class="conn-dot"></span>
+	<span class="conn-text">{label}</span>
 </div>
 
 <style>
@@ -30,8 +37,18 @@
 		transition: background 0.2s ease, box-shadow 0.2s ease;
 	}
 
-	.conn-dot.on {
+	/* game detected, no live session */
+	.conn.detected .conn-dot {
+		background: var(--color-muted);
+	}
+
+	/* live session — same visual language the old footer used */
+	.conn.active .conn-dot {
 		background: var(--color-accent);
 		box-shadow: 0 0 8px rgba(16, 185, 129, 0.7);
+	}
+
+	.conn.active .conn-text {
+		color: var(--color-text);
 	}
 </style>

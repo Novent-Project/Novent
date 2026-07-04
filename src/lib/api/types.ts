@@ -56,7 +56,15 @@ export interface TrackBoundaries {
 export interface BackendStatus {
 	connected: boolean;
 	game:      string | null;
+	// Not implemented on the backend yet. Once it is, populate this with the
+	// live session identifier so DataState can derive DetectionState.status === 'active'.
+	session?:  string | null;
 }
+
+export type DetectionState =
+	| { status: 'idle' }
+	| { status: 'detected'; game: string }
+	| { status: 'active'; game: string; session: string };
 
 export interface GameConfig {
 	games: Record<string, string>;

@@ -1,6 +1,6 @@
 import { fetchTelemetry, fetchBoundaries, type Lap, type TrackBoundaries } from '$lib/api';
-import { downsample, type Trace, type DownsampledTrace } from '$lib/canvas/shared';
-import { smoothBoundary } from '$lib/canvas/map';
+import { downsample, type Trace, type DownsampledTrace } from '$lib/utils/canvas/shared';
+import { smoothBoundary } from '$lib/utils/canvas/map';
 import {
 	EMPTY_TRACE, makeTrace, sampleAt, lapLength, traceIndexAtTime,
 	sectorDurations, segmentIndex, segmentDelta, liveDelta,

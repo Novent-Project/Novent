@@ -27,7 +27,7 @@
 		<div class="shell">
 			<Sidebar />
 			<div class="shell-right">
-				<TopBar connected={data.connected} game={data.game} />
+				<TopBar detection={data.detection} />
 				<main class="shell-main">
 					{@render children()}
 				</main>

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { gameShort, formatName } from '$lib/utils';
-	import { isGarbage, type Trace } from '$lib/canvas';
+	import { isGarbage, type Trace } from '$lib/utils/canvas';
 
 	interface Session {
 		car:      string;
