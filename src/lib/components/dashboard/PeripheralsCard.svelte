@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import Icon from '$lib/components/chrome/Icon.svelte';
 
 	type PeripheralId = 'wheel' | 'pedals' | 'shifter' | 'controller';
 
@@ -58,30 +59,7 @@
 		{#each peripherals as p (p.id)}
 			<div class="item" class:connected={p.connected}>
 				<span class="orb">
-					{#if p.id === 'wheel'}
-						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-							<circle cx="12" cy="12" r="8" />
-							<circle cx="12" cy="12" r="2.25" />
-							<path d="M12 4v3.6M5.3 16.4l3-1.7M18.7 16.4l-3-1.7" stroke-linecap="round" />
-						</svg>
-					{:else if p.id === 'pedals'}
-						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-							<rect x="6" y="7" width="3.6" height="13" rx="1.4" transform="rotate(-8 7.8 13.5)" />
-							<rect x="13.8" y="4.5" width="3.6" height="15.5" rx="1.4" transform="rotate(-4 15.6 12)" />
-						</svg>
-					{:else if p.id === 'shifter'}
-						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-							<path d="M6 6v12M12 6v12M18 6v12M6 12h12" stroke-linecap="round" stroke-linejoin="round" />
-							<circle cx="12" cy="4" r="1.4" fill="currentColor" stroke="none" />
-						</svg>
-					{:else}
-						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-							<path d="M6.5 6.5h11a3 3 0 0 1 3 3v3.6a2.6 2.6 0 0 1-2.6 2.6c-.85 0-1.35-.4-1.85-.95l-.85-.9H8.8l-.85.9c-.5.55-1 .95-1.85.95a2.6 2.6 0 0 1-2.6-2.6V9.5a3 3 0 0 1 3-3Z" />
-							<path d="M7.3 10.3v2.4M6.1 11.5h2.4" stroke-linecap="round" />
-							<circle cx="16" cy="10" r="0.9" fill="currentColor" stroke="none" />
-							<circle cx="18" cy="12" r="0.9" fill="currentColor" stroke="none" />
-						</svg>
-					{/if}
+					<Icon name={p.id} size={18} />
 				</span>
 				<span class="label">{p.label}</span>
 			</div>

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { formatName } from '$lib/utils';
+	import Icon from '$lib/components/chrome/Icon.svelte';
 
 	interface CarUsage {
 		car:  string;
@@ -15,21 +16,12 @@
 	let maxLaps = $derived(Math.max(1, ...cars.map(c => c.laps)));
 </script>
 
-{#snippet carIcon()}
-	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-		<path d="M6 6h15l-1.5 9h-12z" stroke-linejoin="round" />
-		<path d="M6 6L4.5 3H2" stroke-linecap="round" stroke-linejoin="round" />
-		<circle cx="9.5" cy="19" r="1.4" fill="currentColor" stroke="none" />
-		<circle cx="17.5" cy="19" r="1.4" fill="currentColor" stroke="none" />
-	</svg>
-{/snippet}
-
 <div class="card hud-card">
 	{#if cars.length}
 		<!-- Placeholder hero shot for the most-used car — swap for the real
 		     render/photo once that's wired up. -->
 		<div class="placeholder hero" aria-hidden="true">
-			{@render carIcon()}
+			<Icon name="car" size={32} />
 		</div>
 
 		<ul class="list">
@@ -38,7 +30,7 @@
 					<!-- Placeholder per-car thumb — swap for the real render/photo
 					     once that's wired up. -->
 					<span class="placeholder thumb" aria-hidden="true">
-						{@render carIcon()}
+						<Icon name="car" size={20} />
 					</span>
 
 					<div class="info">
@@ -55,7 +47,7 @@
 	{:else}
 		<div class="empty">
 			<span class="placeholder thumb thumb--empty" aria-hidden="true">
-				{@render carIcon()}
+				<Icon name="car" size={26} />
 			</span>
 			<span class="title">No Cars Yet</span>
 			<span class="sub">Head to the Race Engineer tab to start logging data</span>

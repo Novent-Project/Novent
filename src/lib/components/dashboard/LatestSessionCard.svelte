@@ -68,7 +68,7 @@
 		</div>
 
 		<svg class="trace" viewBox="0 0 {VB_W} {VB_H}" fill="none" aria-hidden="true">
-			<path d={outlinePath} stroke="var(--color-subtle)" stroke-width="2" stroke-linejoin="round" />
+			<path d={outlinePath} stroke="var(--color-subtle)" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
 		</svg>
 
 		<dl class="stats">
@@ -79,7 +79,7 @@
 	{:else}
 		<div class="empty">
 			<svg viewBox="0 0 {VB_W} {VB_H}" fill="none" aria-hidden="true">
-				<path d={FALLBACK_PATH} stroke="var(--color-subtle)" stroke-width="2" stroke-linejoin="round" />
+				<path d={FALLBACK_PATH} stroke="var(--color-subtle)" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
 			</svg>
 			<span class="empty-title">No sessions yet</span>
 			<span class="empty-sub">Head to the Race Engineer tab to start logging data</span>
@@ -145,9 +145,11 @@
 	.stats dd { margin: 0; font-size: 12px; font-weight: 600; color: var(--color-text); }
 
 	.empty {
+		flex: 1;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
+		justify-content: center;
 		gap: 8px;
 		padding: 12px 0 4px;
 		text-align: center;

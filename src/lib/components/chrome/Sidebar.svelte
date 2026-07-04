@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { House, Gauge, Settings } from '@lucide/svelte';
+	import Icon from '$lib/components/chrome/Icon.svelte';
+	import { Home, ChartBar, Cog6Tooth } from '@steeze-ui/heroicons';
 
 	const links = [
-		{ label: 'Dashboard', href: '/',         icon: House },
-		{ label: 'Analysis',  href: '/analysis', icon: Gauge },
+		{ label: 'Dashboard', href: '/',         icon: Home },
+		{ label: 'Analysis',  href: '/analysis', icon: ChartBar },
 	];
 
 	function isActive(href: string): boolean {
@@ -38,14 +39,14 @@
 					aria-label={link.label}
 					aria-current={isActive(link.href) ? 'page' : undefined}
 				>
-					<link.icon size={18} strokeWidth={2} />
+					<Icon src={link.icon} size={18} />
 				</a>
 			{/each}
 		</nav>
 	</div>
 
-	<a class="rail-slot settings" href="/analysis" aria-label="Settings">
-		<Settings size={18} strokeWidth={2} />
+	<a class="rail-slot settings" href="/analysis?settings=open" aria-label="Settings">
+		<Icon src={Cog6Tooth} size={18} />
 	</a>
 </aside>
 

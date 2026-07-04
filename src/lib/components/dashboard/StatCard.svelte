@@ -11,14 +11,12 @@
 <div class="stat hud-card">
 	<span class="orb">
 		{#if icon === 'clock'}
-			<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-				<circle cx="8" cy="8" r="6" />
-				<path d="M8 4.5V8l2.5 1.5" stroke-linecap="round" />
+			<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+				<path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 6a.75.75 0 0 0-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 0 0 0-1.5h-3.75V6Z" clip-rule="evenodd"/>
 			</svg>
 		{:else}
-			<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-				<path d="M4 2v12" stroke-linecap="round" />
-				<path d="M4 3h7l-1.5 2.2L11 7.5H4" />
+			<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+				<path fill-rule="evenodd" d="M3 2.25a.75.75 0 0 1 .75.75v.54l1.838-.46a9.75 9.75 0 0 1 6.725.738l.108.054A8.25 8.25 0 0 0 18 4.524l3.11-.732a.75.75 0 0 1 .917.81 47.784 47.784 0 0 0 .005 10.337.75.75 0 0 1-.574.812l-3.114.733a9.75 9.75 0 0 1-6.594-.77l-.108-.054a8.25 8.25 0 0 0-5.69-.625l-2.202.55V21a.75.75 0 0 1-1.5 0V3A.75.75 0 0 1 3 2.25Z" clip-rule="evenodd"/>
 			</svg>
 		{/if}
 	</span>
