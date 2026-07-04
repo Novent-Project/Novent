@@ -15,12 +15,13 @@
 
 	$effect(() => {
 		if (!canvas || width === 0 || height === 0 || !analysis.currentTrace.worldX.length) return;
-		map.maybeFit(analysis.currentTrace, width, height, analysis.fitKey);
+		map.maybeFit(analysis.currentTrace, width, height, analysis.fitKey, analysis.boundaries);
 		drawMap(
 			canvas, width, height,
 			analysis.currentTrace, analysis.dsTrace,
 			map.scale, map.offsetX, map.offsetY,
 			analysis.playbackIdx, analysis.boundaries, analysis.compLaps,
+			map.boundaryFix,
 		);
 	});
 </script>

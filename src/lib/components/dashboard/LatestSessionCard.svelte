@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { gameShort, formatName } from '$lib/utils';
+	import { isGarbage, type Trace } from '$lib/canvas';
 
 	interface Session {
 		car:      string;
@@ -11,14 +12,52 @@
 
 	interface Props {
 		session?: Session | null;
+		trace?:   Trace | null;
 	}
 
-	let { session = null }: Props = $props();
+	let { session = null, trace = null }: Props = $props();
+
+	const VB_W = 200;
+	const VB_H = 90;
+	const PAD  = 8;
+	const MAX_POINTS = 220;
+	const FALLBACK_PATH =
+		'M20 60 C10 40 30 22 55 26 C78 30 70 52 92 54 C120 57 118 30 140 28 C168 26 182 44 172 60 C164 73 140 74 120 68 C96 61 60 78 40 72 C26 68 24 66 20 60 Z';
+
+	function buildOutlinePath(t: Trace | null): string | null {
+		if (!t || !t.worldX?.length) return null;
+
+		let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+		const pts: { x: number; z: number }[] = [];
+		for (let i = 0; i < t.worldX.length; i++) {
+			const x = t.worldX[i], z = t.worldZ[i];
+			if (isGarbage(x, z)) continue;
+			pts.push({ x, z });
+			if (x < minX) minX = x; if (x > maxX) maxX = x;
+			if (z < minZ) minZ = z; if (z > maxZ) maxZ = z;
+		}
+		if (pts.length < 10 || !isFinite(minX)) return null;
+
+		const spanX = maxX - minX || 1;
+		const spanZ = maxZ - minZ || 1;
+		const scale = Math.min((VB_W - PAD * 2) / spanX, (VB_H - PAD * 2) / spanZ);
+		const offsetX = VB_W / 2 - ((minX + maxX) / 2) * scale;
+		const offsetY = VB_H / 2 + ((minZ + maxZ) / 2) * scale;
+
+		const step = Math.max(1, Math.floor(pts.length / MAX_POINTS));
+		let d = '';
+		for (let i = 0; i < pts.length; i += step) {
+			const sx = (pts[i].x * scale + offsetX).toFixed(1);
+			const sy = (pts[i].z * -scale + offsetY).toFixed(1);
+			d += i === 0 ? `M${sx} ${sy}` : ` L${sx} ${sy}`;
+		}
+		return d + ' Z';
+	}
+
+	let outlinePath = $derived(buildOutlinePath(trace) ?? FALLBACK_PATH);
 </script>
 
 <div class="card hud-card">
-	<h3 class="heading">Latest Session</h3>
-
 	{#if session}
 		<div class="game-row">
 			<span class="logo mono">{gameShort(session.game)}</span>
@@ -28,11 +67,8 @@
 			</div>
 		</div>
 
-		<svg class="trace" viewBox="0 0 200 90" fill="none" aria-hidden="true">
-			<path
-				d="M20 60 C10 40 30 22 55 26 C78 30 70 52 92 54 C120 57 118 30 140 28 C168 26 182 44 172 60 C164 73 140 74 120 68 C96 61 60 78 40 72 C26 68 24 66 20 60 Z"
-				stroke="var(--color-subtle)" stroke-width="2" stroke-linejoin="round"
-			/>
+		<svg class="trace" viewBox="0 0 {VB_W} {VB_H}" fill="none" aria-hidden="true">
+			<path d={outlinePath} stroke="var(--color-subtle)" stroke-width="2" stroke-linejoin="round" />
 		</svg>
 
 		<dl class="stats">
@@ -42,11 +78,8 @@
 		</dl>
 	{:else}
 		<div class="empty">
-			<svg viewBox="0 0 200 90" fill="none" aria-hidden="true">
-				<path
-					d="M20 60 C10 40 30 22 55 26 C78 30 70 52 92 54 C120 57 118 30 140 28 C168 26 182 44 172 60 C164 73 140 74 120 68 C96 61 60 78 40 72 C26 68 24 66 20 60 Z"
-					stroke="var(--color-subtle)" stroke-width="2" stroke-linejoin="round"
-				/>
+			<svg viewBox="0 0 {VB_W} {VB_H}" fill="none" aria-hidden="true">
+				<path d={FALLBACK_PATH} stroke="var(--color-subtle)" stroke-width="2" stroke-linejoin="round" />
 			</svg>
 			<span class="empty-title">No sessions yet</span>
 			<span class="empty-sub">Head to the Race Engineer tab to start logging data</span>
@@ -60,13 +93,6 @@
 		flex-direction: column;
 		gap: 14px;
 		padding: 18px 20px;
-	}
-
-	.heading {
-		margin: 0;
-		font-size: 15px;
-		font-weight: 700;
-		color: #fff;
 	}
 
 	.game-row {
@@ -93,13 +119,13 @@
 	}
 
 	.names { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-	.car   { font-size: 14px; font-weight: 600; color: #fff; }
+	.car   { font-size: 14px; font-weight: 600; color: var(--color-text); }
 	.track { font-size: 12px; color: var(--color-muted); }
 
 	.trace {
+		flex: 1;
+		min-height: 60px;
 		width: 100%;
-		height: 84px;
-		align-self: center;
 	}
 
 	.stats {

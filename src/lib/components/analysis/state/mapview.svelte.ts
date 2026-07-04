@@ -1,5 +1,6 @@
-import { fitMap } from '$lib/canvas/map';
+import { fitMap, calibrateBoundary, type BoundaryFix } from '$lib/canvas/map';
 import type { Trace } from '$lib/canvas/shared';
+import type { TrackBoundaries } from '$lib/api';
 
 export const ZOOM_UI_MIN = 0.5;
 export const ZOOM_UI_MAX = 8;
@@ -12,9 +13,10 @@ export class MapView {
 	scale     = $state(1);
 	offsetX   = $state(0);
 	offsetY   = $state(0);
-	fitScale  = $state(1);
-	zoomLevel = $state(1);
-	isPanning = $state(false);
+	fitScale    = $state(1);
+	zoomLevel   = $state(1);
+	isPanning   = $state(false);
+	boundaryFix = $state<BoundaryFix | null>(null);
 
 	#targetScale   = 1;
 	#targetOffsetX = 0;
@@ -23,21 +25,32 @@ export class MapView {
 	#running       = false;
 	#panStart      = { x: 0, y: 0, ox: 0, oy: 0 };
 	#fittedFor: number | null = null;
+	#fixedFor: TrackBoundaries | null | undefined = undefined;
 
-	maybeFit(trace: Trace, w: number, h: number, key: number) {
-		if (key === this.#fittedFor) return;
-		const fit = fitMap(trace, w, h);
-		if (!fit) return;
-		this.fitScale      = fit.scale;
-		this.#targetScale  = fit.scale;
-		this.#targetOffsetX = fit.offsetX;
-		this.#targetOffsetY = fit.offsetY;
-		this.scale     = fit.scale * 0.4;
-		this.offsetX   = w / 2;
-		this.offsetY   = h / 2;
-		this.zoomLevel = 1;
-		this.#fittedFor = key;
-		this.#nudge();
+	maybeFit(trace: Trace, w: number, h: number, key: number, boundaries: TrackBoundaries | null = null) {
+		if (key !== this.#fittedFor) {
+			const fit = fitMap(trace, w, h);
+			if (!fit) return;
+			this.fitScale       = fit.scale;
+			this.#targetScale   = fit.scale;
+			this.#targetOffsetX = fit.offsetX;
+			this.#targetOffsetY = fit.offsetY;
+			this.scale     = fit.scale * 0.4;
+			this.offsetX   = w / 2;
+			this.offsetY   = h / 2;
+			this.zoomLevel = 1;
+			this.#fittedFor = key;
+			this.#fixedFor  = undefined; // force boundary fix to recompute for this trace
+			this.#nudge();
+		}
+
+		// Boundaries often arrive asynchronously, after the trace fit above has
+		// already run — so this is checked independently, on its own identity,
+		// rather than gated behind the same `key` the trace fit uses.
+		if (boundaries !== this.#fixedFor) {
+			this.boundaryFix = calibrateBoundary(trace, boundaries);
+			this.#fixedFor   = boundaries;
+		}
 	}
 
 	setZoom(v: number) {

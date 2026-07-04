@@ -32,14 +32,14 @@
 	.stat {
 		display: flex;
 		align-items: center;
-		gap: 14px;
-		padding: 18px 20px;
+		gap: 12px;
+		padding: 14px 18px;
 	}
 
 	.orb {
 		flex: 0 0 auto;
-		width: 42px;
-		height: 42px;
+		width: 36px;
+		height: 36px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -49,7 +49,7 @@
 		color: var(--color-accent);
 	}
 
-	.orb svg { width: 18px; height: 18px; }
+	.orb svg { width: 16px; height: 16px; }
 
 	.body {
 		display: flex;
@@ -64,9 +64,9 @@
 	}
 
 	.value {
-		font-size: 24px;
+		font-size: 20px;
 		font-weight: 700;
-		color: #fff;
+		color: var(--color-text);
 		font-variant-numeric: tabular-nums;
 	}
 </style>

@@ -1,166 +1,209 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
 	import type { DataState } from '$lib/state/data.svelte';
-	import { formatDriveTime } from '$lib/utils';
+	import { fetchTelemetry } from '$lib/api';
+	import type { Trace } from '$lib/canvas';
 	import StatCard from '$lib/components/dashboard/StatCard.svelte';
-	import UnlockCard from '$lib/components/dashboard/UnlockCard.svelte';
+	import PeripheralsCard from '$lib/components/dashboard/PeripheralsCard.svelte';
 	import LatestSessionCard from '$lib/components/dashboard/LatestSessionCard.svelte';
 	import MostUsedCarCard from '$lib/components/dashboard/MostUsedCarCard.svelte';
-	import WeeklyActivityCard from '$lib/components/dashboard/WeeklyActivityCard.svelte';
+	import ActivityHeatmap from '$lib/components/dashboard/ActivityHeatmap.svelte';
 
 	const data = getContext<DataState>('data');
 
-	let monthlyLaps = $derived(data.laps.length);
-	let monthlyTime = $derived(formatDriveTime(data.laps.reduce((sum, l) => sum + (l.lap_time_ms ?? 0), 0)));
+	// `monthlyLaps` previously just counted every lap in `data.laps` — it
+	// wasn't filtered to the month at all despite the label. Scope it to the
+	// current calendar month using `date_time`.
+	let monthlyLaps = $derived.by(() => {
+		const now = new Date();
+		return data.laps.filter(l => {
+			if (!l.date_time) return false;
+			const d = new Date(l.date_time);
+			return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+		}).length;
+	});
+
+	// Laps aren't guaranteed to arrive newest-first from the API, so sort
+	// explicitly rather than assuming array order.
+	let sortedLaps = $derived(
+		[...data.laps].sort((a, b) => (b.date_time ?? '').localeCompare(a.date_time ?? ''))
+	);
 
 	let latest = $derived(
-		data.laps[0]
+		sortedLaps[0]
 			? {
-					car:     data.laps[0].car,
-					track:   data.laps[0].track,
-					game:    data.laps[0].game,
-					type:    data.laps[0].session_type,
-					bestLap: data.laps[0].lap_time,
+					car:     sortedLaps[0].car,
+					track:   sortedLaps[0].track,
+					game:    sortedLaps[0].game,
+					type:    sortedLaps[0].session_type,
+					bestLap: sortedLaps[0].lap_time,
 				}
 			: null
 	);
 
-	let mostUsedCar = $derived.by(() => {
-		if (!data.laps.length) return null;
-		const counts = new Map<string, number>();
-		for (const l of data.laps) counts.set(l.car, (counts.get(l.car) ?? 0) + 1);
-		return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
+	// Keyed on the uuid value (not `sortedLaps`/`latest` directly) so this only
+	// refetches when the latest lap actually changes, not on every unrelated
+	// `data.laps` update.
+	let latestUuid = $derived(sortedLaps[0]?.uuid ?? null);
+	let latestTrace = $state<Trace | null>(null);
+
+	$effect(() => {
+		const uuid = latestUuid;
+		if (!uuid) {
+			latestTrace = null;
+			return;
+		}
+		let cancelled = false;
+		fetchTelemetry(uuid)
+			.then(t => {
+				if (cancelled) return;
+				latestTrace = {
+					gas:     t.gas,
+					brake:   t.brake,
+					steer:   t.steering,
+					normPos: t.normalizedCarPosition,
+					worldX:  t.worldX,
+					worldZ:  t.worldZ,
+					time:    t.time,
+					speed:   t.speedKmh,
+					gear:    t.gear,
+					rpm:     t.rpms,
+				};
+			})
+			.catch(() => {
+				if (!cancelled) latestTrace = null;
+			});
+		return () => { cancelled = true; };
 	});
 
-	const WEEKDAYS = ['Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu'];
-	let weekly = $derived(WEEKDAYS.map(label => ({ label, value: 0 })));
+	let topCars = $derived.by(() => {
+		if (!data.laps.length) return [];
+		const counts = new Map<string, number>();
+		for (const l of data.laps) counts.set(l.car, (counts.get(l.car) ?? 0) + 1);
+		return [...counts.entries()]
+			.sort((a, b) => b[1] - a[1])
+			.slice(0, 2)
+			.map(([car, laps]) => ({ car, laps }));
+	});
+
+	// `Lap.date_time` is the ISO timestamp field from the API (there is no
+	// `date` field on `Lap` — see api/types.ts).
+	let heatmapEntries = $derived.by(() => {
+		const counts = new Map<string, number>();
+		for (const l of data.laps) {
+			const key = l.date_time?.slice(0, 10);
+			if (!key) continue;
+			counts.set(key, (counts.get(key) ?? 0) + 1);
+		}
+		return [...counts.entries()].map(([date, value]) => ({ date, value }));
+	});
 </script>
 
 <div class="dashboard">
-	<section class="welcome">
-		<span class="eyebrow">Welcome,</span>
-		<span class="ready">Ready to go fast?</span>
+	<!-- Renderer placeholder — swap for the real 3D/car view once it's built.
+	     Kept deliberately generic (no copy, no CTA) so it doesn't ship as a
+	     fake "final" hero by accident. -->
+	<section class="hero hud-card hero--placeholder">
+		<span class="hero-label">Renderer</span>
+		<span class="hero-mark" aria-hidden="true">G</span>
 	</section>
 
 	<div class="c-laps"><StatCard icon="flag" label="Monthly Laps" value={String(monthlyLaps)} /></div>
-	<div class="c-time"><StatCard icon="clock" label="Monthly Time Driven" value={monthlyTime} /></div>
-	<div class="c-unlock"><UnlockCard title="Unlock Advanced Analysis Tools" /></div>
+	<div class="c-peripherals"><PeripheralsCard /></div>
 
-	<section class="hero">
-		<h1>Performance Tools</h1>
-		<p>Head to the <a href="/analysis">Analysis</a> tab to start logging data.</p>
-		<a class="cta" href="/analysis">
-			Open Analysis
-			<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-				<path d="M3 8h10M9 4l4 4-4 4" stroke-linecap="round" stroke-linejoin="round" />
-			</svg>
-		</a>
-		<svg class="hero-art" viewBox="0 0 64 64" aria-hidden="true">
-			<path
-				d="M14 8 H50 a6 6 0 0 1 6 6 V42 L42 56 H14 a6 6 0 0 1 -6 -6 V14 a6 6 0 0 1 6 -6 Z"
-				fill="none" stroke="#10b981" stroke-width="2" stroke-linejoin="round"
-			/>
-			<path
-				transform="translate(16 23.2) scale(0.2)"
-				d="M0,88 L30,88 L46,44 L64,44 L80,88 L110,88 L126,44 L144,44 L160,0 L130,0 L114,44 L96,44 L80,0 L50,0 L34,44 L16,44 Z"
-				fill="#10b981"
-			/>
-		</svg>
-	</section>
-
-	<div class="c-latest"><LatestSessionCard session={latest} /></div>
-	<div class="c-car"><MostUsedCarCard car={mostUsedCar} /></div>
-	<div class="c-weekly"><WeeklyActivityCard days={weekly} /></div>
+	<div class="c-latest"><LatestSessionCard session={latest} trace={latestTrace} /></div>
+	<div class="c-car"><MostUsedCarCard cars={topCars} /></div>
+	<div class="c-activity"><ActivityHeatmap entries={heatmapEntries} /></div>
 </div>
 
 <style>
 	.dashboard {
 		display: grid;
-		grid-template-columns: repeat(4, minmax(0, 1fr));
-		grid-template-rows: auto auto auto;
-		gap: 16px;
+		grid-template-columns: repeat(5, minmax(0, 1fr));
+		grid-template-rows: auto minmax(0, 1.4fr) minmax(0, 1fr);
+		gap: var(--hud-gap);
 		padding: 24px;
-		min-height: 100%;
+		height: 100%;
+		min-height: 0;
+		overflow: hidden;
+		box-sizing: border-box;
+		background: var(--color-bg);
 	}
 
-	.welcome  { grid-column: 1; grid-row: 1; align-self: center; display: flex; flex-direction: column; gap: 4px; }
-	.c-laps   { grid-column: 2; grid-row: 1; }
-	.c-time   { grid-column: 3; grid-row: 1; }
-	.c-unlock { grid-column: 4; grid-row: 1; }
-	.hero     { grid-column: 1 / 3; grid-row: 2 / 4; }
-	.c-latest { grid-column: 3; grid-row: 2; }
-	.c-car    { grid-column: 4; grid-row: 2; }
-	.c-weekly { grid-column: 3 / 5; grid-row: 3; }
+	.dashboard > * {
+		min-height: 0;
+		min-width: 0;
+	}
 
-	.eyebrow { font-size: 14px; color: var(--color-muted); }
-	.ready   { font-size: 22px; font-weight: 700; color: #fff; letter-spacing: -0.01em; }
-
+	/* Left: hero renderer, spans all three rows across the first three columns */
 	.hero {
+		grid-column: 1 / 4;
+		grid-row: 1 / 4;
 		position: relative;
 		display: flex;
-		flex-direction: column;
-		gap: 16px;
-		padding: 40px 8px 8px;
-		overflow: hidden;
-	}
-
-	.hero h1 {
-		margin: 0;
-		font-size: 64px;
-		font-weight: 800;
-		line-height: 1.02;
-		letter-spacing: -0.03em;
-		color: #fff;
-	}
-
-	.hero p {
-		margin: 0;
-		font-size: 14px;
-		color: var(--color-muted);
-	}
-
-	.hero p a { color: var(--color-accent); text-decoration: none; }
-	.hero p a:hover { text-decoration: underline; }
-
-	.cta {
-		align-self: flex-start;
-		display: inline-flex;
 		align-items: center;
-		gap: 8px;
-		margin-top: 4px;
-		padding: 10px 18px;
-		border-radius: var(--radius-pill);
-		background: var(--color-accent);
-		color: #041a12;
-		font-size: 13px;
-		font-weight: 700;
-		text-decoration: none;
-		transition: background 0.15s ease, transform 0.1s ease;
+		justify-content: center;
 	}
 
-	.cta:hover  { background: #34d399; }
-	.cta:active { transform: scale(0.98); }
-	.cta svg { width: 15px; height: 15px; }
+	/* Right: stat pill + peripherals on top, then the two metric cards, then activity */
+	.c-laps        { grid-column: 4; grid-row: 1; display: flex; }
+	.c-peripherals { grid-column: 5; grid-row: 1; }
+	.c-latest      { grid-column: 4; grid-row: 2; }
+	.c-car         { grid-column: 5; grid-row: 2; }
+	.c-activity    { grid-column: 4 / 6; grid-row: 3; }
 
-	.hero-art {
+	.c-laps :global(.stat) {
+		width: 100%;
+		height: 100%;
+	}
+
+	.c-peripherals :global(.card),
+	.c-latest :global(.card),
+	.c-car :global(.card),
+	.c-activity :global(.card) {
+		height: 100%;
+	}
+
+	.hero--placeholder {
+		border-style: dashed;
+	}
+
+	.hero-label {
+		font-size: 11px;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+		color: var(--color-muted);
+		font-weight: 600;
+	}
+
+	.hero-mark {
 		position: absolute;
-		right: -4%;
-		bottom: -6%;
-		width: 62%;
-		max-width: 460px;
-		opacity: 0.06;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		font-size: 120px;
+		font-weight: 900;
+		line-height: 1;
+		color: var(--color-text);
+		opacity: 0.03;
+		user-select: none;
 		pointer-events: none;
 	}
 
 	@media (max-width: 1200px) {
-		.dashboard { grid-template-columns: 1fr 1fr; }
+		.dashboard {
+			grid-template-columns: 1fr 1fr;
+			grid-template-rows: none;
+			height: auto;
+			overflow: visible;
+		}
 
-		.welcome, .c-laps, .c-time, .c-unlock, .hero, .c-latest, .c-car, .c-weekly {
+		.hero, .c-laps, .c-peripherals, .c-latest, .c-car, .c-activity {
 			grid-column: auto;
 			grid-row: auto;
 		}
 
-		.hero, .c-weekly { grid-column: 1 / -1; }
-		.hero h1 { font-size: 48px; }
+		.hero { min-height: 260px; }
+		.c-activity { grid-column: 1 / -1; }
 	}
 </style>

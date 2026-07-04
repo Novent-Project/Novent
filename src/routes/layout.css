@@ -27,10 +27,11 @@
 	--radius-sm:    9px;
 	--radius-pill:  9999px;
 
-	--card-bg:        rgba(255, 255, 255, 0.025);
-	--card-bg-hover:  rgba(255, 255, 255, 0.045);
-	--card-border:    rgba(255, 255, 255, 0.07);
-	--card-shadow:    0 10px 30px rgba(0, 0, 0, 0.35);
+	--card-bg:        rgba(255, 255, 255, 0.05);
+	--card-bg-hover:  rgba(255, 255, 255, 0.08);
+	--card-border:    rgba(255, 255, 255, 0.12);
+	--card-shadow:    0 8px 32px rgba(0, 0, 0, 0.45);
+	--card-blur:      20px;
 
 	--hud-gap: 14px;
 }
@@ -85,10 +86,12 @@ div#svelte {
 
 /* HUD shared utilities (used across widget components) */
 .hud-card {
-	background: var(--card-bg);
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), var(--card-bg) 60%);
+	backdrop-filter: blur(var(--card-blur)) saturate(160%);
+	-webkit-backdrop-filter: blur(var(--card-blur)) saturate(160%);
 	border: 1px solid var(--card-border);
 	border-radius: var(--radius-card);
-	box-shadow: var(--card-shadow);
+	box-shadow: var(--card-shadow), inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
 }
 
 .hud-eyebrow {

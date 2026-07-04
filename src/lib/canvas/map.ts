@@ -7,7 +7,7 @@ interface CompLap {
 	color: string;
 }
 
-function isGarbage(x: number, z: number): boolean {
+export function isGarbage(x: number, z: number): boolean {
 	return (x === 0 && z === 0) || Math.abs(x) > 50000 || Math.abs(z) > 50000;
 }
 
@@ -28,6 +28,60 @@ export function smoothBoundary(pts: { x: number; z: number }[], window = 7): { x
 		out.push({ x: sx / window, z: sz / window });
 	}
 	return out;
+}
+
+export interface BoundaryFix {
+	scale: number;
+	dx:    number;
+	dz:    number;
+}
+
+/**
+ * Boundaries come from a separate, independently-calibrated source
+ * (map.ini reconstruction, manual recording, etc.) and may not agree with
+ * the trace's world coordinates in scale or position. This computes a
+ * uniform scale + offset that maps the boundary's bounding box onto the
+ * trace's bounding box, using the trace as ground truth. Uniform scale
+ * (not independent X/Z) preserves the boundary's shape — it only gets
+ * resized/repositioned, never stretched.
+ */
+export function calibrateBoundary(trace: Trace, boundaries: TrackBoundaries | null): BoundaryFix | null {
+	if (!boundaries?.outer?.length) return null;
+
+	let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+	for (let i = 0; i < trace.worldX.length; i++) {
+		const x = trace.worldX[i], z = trace.worldZ[i];
+		if (isGarbage(x, z)) continue;
+		if (x < minX) minX = x; if (x > maxX) maxX = x;
+		if (z < minZ) minZ = z; if (z > maxZ) maxZ = z;
+	}
+	if (!isFinite(minX)) return null;
+
+	let bMinX = Infinity, bMaxX = -Infinity, bMinZ = Infinity, bMaxZ = -Infinity;
+	for (const arr of [boundaries.outer, boundaries.inner]) {
+		if (!arr) continue;
+		for (const pt of arr) {
+			const px = (pt as any).x ?? (pt as any)[0];
+			const pz = (pt as any).z ?? (pt as any)[1];
+			if (px === undefined || pz === undefined) continue;
+			if (px < bMinX) bMinX = px; if (px > bMaxX) bMaxX = px;
+			if (pz < bMinZ) bMinZ = pz; if (pz > bMaxZ) bMaxZ = pz;
+		}
+	}
+	if (!isFinite(bMinX)) return null;
+
+	const traceDiag = Math.hypot(maxX - minX, maxZ - minZ) || 1;
+	const boundDiag = Math.hypot(bMaxX - bMinX, bMaxZ - bMinZ) || 1;
+	const scale     = traceDiag / boundDiag;
+
+	const traceCx = (minX + maxX) / 2, traceCz = (minZ + maxZ) / 2;
+	const boundCx = (bMinX + bMaxX) / 2, boundCz = (bMinZ + bMaxZ) / 2;
+
+	return {
+		scale,
+		dx: traceCx - boundCx * scale,
+		dz: traceCz - boundCz * scale,
+	};
 }
 
 export function fitMap(
@@ -66,7 +120,8 @@ export function drawMap(
 	offsetY:    number,
 	idx:        number,
 	boundaries: TrackBoundaries | null,
-	compLaps:   CompLap[]
+	compLaps:   CompLap[],
+	boundaryFix: BoundaryFix | null = null
 ) {
 	if (!canvas || !trace.worldX.length) return;
 
@@ -95,7 +150,9 @@ export function drawMap(
 				const px = pt.x ?? (pt as any)[0];
 				const pz = pt.z ?? (pt as any)[1];
 				if (px === undefined || pz === undefined) continue;
-				const { sx, sz } = toScreen(px, pz);
+				const fx = boundaryFix ? px * boundaryFix.scale + boundaryFix.dx : px;
+				const fz = boundaryFix ? pz * boundaryFix.scale + boundaryFix.dz : pz;
+				const { sx, sz } = toScreen(fx, fz);
 				if (isNaN(sx) || isNaN(sz)) continue;
 				sp.push({ x: sx, y: sz });
 			}

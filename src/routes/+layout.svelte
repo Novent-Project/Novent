@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { setContext, onMount } from 'svelte';
 	import './layout.css';
-	import favicon from '$lib/assets/favicon.svg';
+	import favicon from '$lib/assets/Novent.svg';
 	import Splashscreen from '$lib/components/layout/Splashscreen.svelte';
 	import Sidebar from '$lib/components/layout/Sidebar.svelte';
 	import TopBar from '$lib/components/layout/TopBar.svelte';
