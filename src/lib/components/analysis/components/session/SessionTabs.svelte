@@ -77,7 +77,10 @@
     transition: color 0.12s ease, background 0.12s ease;
   }
 
-  .tab:hover { color: var(--color-text); }
+  .tab:hover {
+    color: var(--color-text);
+    border-color: var(--color-border-md);
+  }
 
   .tab.active,
   .tab.loading {
@@ -121,7 +124,7 @@
     display: inline-flex;
     align-items: center;
     height: 100%;
-    padding: 0 8px 0 14px;
+    padding: 0 8px 3px 14px;
     background: none;
     border: none;
     color: inherit;

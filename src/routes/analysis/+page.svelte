@@ -6,14 +6,12 @@
 	import TelemetryView from '$lib/components/analysis/TelemetryView.svelte';
 	import SessionTabs from '$lib/components/analysis/components/session/SessionTabs.svelte';
 	import Settings from '$lib/components/settings/Settings.svelte';
-	import { UiState, AnalysisState, MapView } from '$lib/components/analysis/state';
+	import { UiState, TabsState } from '$lib/components/analysis/state';
 	import type { DataState } from '$lib/state/data.svelte';
-	import { formatName } from '$lib/utils';
 
-	const data = getContext<DataState>('data');
-	const ui       = new UiState();
-	const analysis = new AnalysisState(data);
-	const map      = new MapView();
+	const data       = getContext<DataState>('data');
+	const ui         = new UiState();
+	const tabsState  = new TabsState(data);
 
 	// Sidebar's settings button links here as /analysis?settings=open since
 	// Settings is scoped to this route's UiState, not a global overlay. Pick
@@ -27,13 +25,14 @@
 	});
 
 	let tabs = $derived(
-		analysis.selectedLap
-			? [{
-					id:       'lap',
-					label:    `${formatName(analysis.selectedLap.car)} | ${formatName(analysis.selectedLap.track)}`,
-					active:   ui.view === 'telemetry',
+		tabsState.tabs.length
+			? tabsState.tabs.map(t => ({
+					id:       t.id,
+					label:    t.label,
+					active:   t.id === tabsState.activeId && ui.view === 'telemetry',
 					closable: true,
-				}]
+					loading:  t.loading,
+				}))
 			: [{ id: 'waiting', label: 'Waiting for session', active: true, closable: false, loading: true }]
 	);
 
@@ -41,17 +40,17 @@
 		const lap = data.lapById(uuid);
 		if (!lap) return;
 		ui.showTelemetry();
-		analysis.selectLap(lap);
+		tabsState.open(lap);
 	}
 
 	function selectTab(id: string) {
-		if (id === 'lap' && analysis.selectedLap) ui.showTelemetry();
+		tabsState.select(id);
+		if (tabsState.active) ui.showTelemetry();
 	}
 
 	function closeTab(id: string) {
-		if (id !== 'lap') return;
-		analysis.clear();
-		ui.showSessions();
+		tabsState.close(id);
+		if (!tabsState.tabs.length) ui.showSessions();
 	}
 
 	onMount(() => {
@@ -60,10 +59,14 @@
 		// dead (nothing reads ui.appZoom anymore) and should be deleted from
 		// ui.svelte.ts — left alone here since that file wasn't in scope.
 		window.addEventListener('keydown', ui.handleKeydown);
+
+		tabsState.restore().then(() => {
+			if (tabsState.active) ui.showTelemetry();
+		});
+
 		return () => {
 			window.removeEventListener('keydown', ui.handleKeydown);
-			analysis.destroy();
-			map.destroy();
+			tabsState.destroy();
 		};
 	});
 </script>
@@ -80,10 +83,10 @@
 
 	<SessionTabs {tabs} onSelect={selectTab} onNew={() => ui.showSessions()} onClose={closeTab} />
 
-	{#if ui.view === 'sessions'}
+	{#if ui.view === 'sessions' || !tabsState.active}
 		<SessionsView {data} onOpen={openSession} onToggleFavorite={(uuid) => data.toggleFavorite(uuid)} />
 	{:else}
-		<TelemetryView {analysis} {map} {ui} />
+		<TelemetryView analysis={tabsState.active.analysis} map={tabsState.active.map} {ui} />
 	{/if}
 </div>
 
