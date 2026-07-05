@@ -78,8 +78,6 @@
 		margin-bottom: 12px;
 	}
 
-	.hero svg { width: 32px; height: 32px; }
-
 	.list {
 		list-style: none;
 		margin: 0;
@@ -104,8 +102,6 @@
 		width: 48px;
 		height: 48px;
 	}
-
-	.thumb svg { width: 20px; height: 20px; }
 
 	.info {
 		flex: 1;
@@ -156,8 +152,6 @@
 		width: 64px;
 		height: 64px;
 	}
-
-	.thumb--empty svg { width: 26px; height: 26px; }
 
 	.title { font-size: 16px; font-weight: 700; color: var(--color-text); }
 

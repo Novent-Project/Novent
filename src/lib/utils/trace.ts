@@ -1,4 +1,4 @@
-import type { Trace, DownsampledTrace } from '$lib/canvas/shared';
+import type { Trace, DownsampledTrace } from '$lib/utils/canvas/shared';
 import type { Telemetry } from '$lib/api';
 
 export interface Sample {
@@ -80,9 +80,37 @@ export function lapLength(trace: Trace): number {
 	return length;
 }
 
-export function traceIndexAtTime(time: number[], t: number): number {
-	const idx = time.findIndex(pt => pt >= t);
-	return idx === -1 ? time.length - 1 : idx;
+/**
+ * First index whose time is >= t (`time` must be non-decreasing), or the last
+ * index if t is past the end; -1 only for an empty array.
+ *
+ * `hint` is an optional starting guess — pass last frame's result during
+ * playback. The playhead only advances a few samples per frame, so checking a
+ * short window ahead of the hint resolves nearly every call in O(1); anything
+ * the window misses (seeks, rewinds, big jumps) falls back to binary search
+ * on the remaining range.
+ */
+export function traceIndexAtTime(time: number[], t: number, hint = 0): number {
+	const n = time.length;
+	if (n === 0) return -1;
+	if (time[n - 1] < t) return n - 1;
+
+	let lo = 0, hi = n - 1; // invariant: the answer is within [lo, hi]
+	if (hint > 0 && hint < n) {
+		if (time[hint - 1] < t) {
+			const end = Math.min(n - 1, hint + 8);
+			for (let i = hint; i <= end; i++) if (time[i] >= t) return i;
+			lo = end + 1;
+		} else {
+			hi = hint - 1;
+		}
+	}
+	while (lo < hi) {
+		const mid = (lo + hi) >> 1;
+		if (time[mid] >= t) hi = mid;
+		else lo = mid + 1;
+	}
+	return lo;
 }
 
 export function sectorDurations(ds: DownsampledTrace): number[] {

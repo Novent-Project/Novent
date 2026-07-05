@@ -245,6 +245,9 @@
 		{/if}
 	</div>
 
+	<!-- svelte-ignore a11y_no_static_element_interactions -- pointer-only
+	     scrub/pan/zoom enhancement; playback is keyboard-reachable via the
+	     playbar's transport controls. -->
 	<div
 		class="chart-stack"
 		onpointerdown={onStackPointerDown}

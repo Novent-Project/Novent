@@ -27,8 +27,8 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<div class="backdrop" onclick={onClose} role="presentation">
-	<div class="dialog" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Settings">
+<div class="backdrop" onclick={(e) => { if (e.target === e.currentTarget) onClose(); }} role="presentation">
+	<div class="dialog" role="dialog" aria-modal="true" aria-label="Settings" tabindex="-1">
 		<header class="dialog-header">
 			<div class="dialog-title">
 				<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">

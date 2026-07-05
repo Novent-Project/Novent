@@ -26,8 +26,6 @@ vite.config.ts.timestamp-*
 # Editor
 .vscode/
 
-# Git
-.git/
 
 __pycache__/
 backend.py
@@ -38,7 +36,6 @@ package-lock.json
 # Tauri
 src-tauri/.cargo/
 src-tauri/target/
-src-tauri/Cargo.lock
 src-tauri/.DS_Store
 src-tauri/.env
 src-tauri/.env.*

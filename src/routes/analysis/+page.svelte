@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getContext, onMount } from 'svelte';
+	import { getContext, onMount, untrack } from 'svelte';
 	import { page } from '$app/state';
 	import { replaceState } from '$app/navigation';
 	import SessionsView from '$lib/components/analysis/SessionsView.svelte';
@@ -53,21 +53,29 @@
 		if (!tabsState.tabs.length) ui.showSessions();
 	}
 
-	onMount(() => {
-		// NOTE: ui.handleKeydown may still contain its own Ctrl +/-/0 zoom branch
-		// from before appZoom moved to DataState/+layout.svelte. That logic is now
-		// dead (nothing reads ui.appZoom anymore) and should be deleted from
-		// ui.svelte.ts — left alone here since that file wasn't in scope.
-		window.addEventListener('keydown', ui.handleKeydown);
+	// Only the active tab is rendered (and only in telemetry view), so pause
+	// every other tab's playback loop — otherwise each open tab keeps a rAF
+	// loop mutating state 60×/s for content nothing displays, and performance
+	// degrades with every extra tab. Suspended tabs remember they were playing
+	// and resume when they become the visible tab again. untrack() so pausing
+	// (which writes isPlaying) can't re-trigger this effect.
+	$effect(() => {
+		const visible = ui.view === 'telemetry' ? tabsState.active : null;
+		const tabs    = tabsState.tabs;
+		untrack(() => {
+			for (const t of tabs) {
+				if (t === visible) t.analysis.activate();
+				else t.analysis.deactivate();
+			}
+		});
+	});
 
+	onMount(() => {
 		tabsState.restore().then(() => {
 			if (tabsState.active) ui.showTelemetry();
 		});
 
-		return () => {
-			window.removeEventListener('keydown', ui.handleKeydown);
-			tabsState.destroy();
-		};
+		return () => tabsState.destroy();
 	});
 </script>
 

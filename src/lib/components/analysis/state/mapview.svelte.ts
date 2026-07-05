@@ -10,6 +10,7 @@ const SETTLE_MOVE = 0.04;
 const SETTLE_ZOOM = 0.00008;
 
 export class MapView {
+	animating = $state(false);
 	scale     = $state(1);
 	offsetX   = $state(0);
 	offsetY   = $state(0);
@@ -102,6 +103,7 @@ export class MapView {
 	#nudge() {
 		if (this.#running) return;
 		this.#running = true;
+		this.animating = true;
 		this.#rafId   = requestAnimationFrame(this.#tick);
 	}
 
@@ -114,6 +116,7 @@ export class MapView {
 			this.offsetY  = this.#targetOffsetY;
 			this.scale    = this.#targetScale;
 			this.#running = false;
+			this.animating = false;
 			return;
 		}
 		this.offsetX += dx * LERP;

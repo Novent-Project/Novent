@@ -143,12 +143,3 @@ export function drawValueLabel(
 	ctx.textAlign = 'left';
 	ctx.fillText(label, x + 5, y + 12);
 }
-
-export function compIndexAt(
-	comp: { trace: Trace; ds: DownsampledTrace },
-	primaryTime: number
-): number {
-	const rawIdx = comp.trace.time.findIndex(pt => pt >= primaryTime);
-	const raw    = rawIdx === -1 ? comp.trace.time.length - 1 : rawIdx;
-	return Math.round(Math.max(0, raw) * (comp.ds.gas.length / comp.trace.gas.length));
-}

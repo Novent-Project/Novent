@@ -57,12 +57,17 @@
 	// instead of re-deriving corner trig by hand, so it's always pixel-exact
 	// wherever the dash actually ends.
 	let topPathEl = $state<SVGPathElement | null>(null);
+	let topPathLen = $state(0);
 	let thumb = $state({ x: 0, y: 0 });
+	// Measure the path once per geometry change, not per playback frame —
+	// getPointAtLength each frame is fine, but getTotalLength needn't be.
 	$effect(() => {
-		if (!topPathEl) return;
-		const len = topPathEl.getTotalLength();
-		if (!len) return;
-		const p = topPathEl.getPointAtLength(len * (pctClamped / 100));
+		topPathD;
+		topPathLen = topPathEl ? topPathEl.getTotalLength() : 0;
+	});
+	$effect(() => {
+		if (!topPathEl || !topPathLen) return;
+		const p = topPathEl.getPointAtLength(topPathLen * (pctClamped / 100));
 		thumb = { x: p.x, y: p.y };
 	});
 
@@ -472,6 +477,9 @@
 				{/if}
 			</div>
 
+			<!-- svelte-ignore a11y_no_static_element_interactions -- pointer-only
+			     scrub/pan/zoom enhancement; playback is keyboard-reachable via the
+			     transport controls above. -->
 			<div
 				class="chart-grid"
 				onpointerdown={onGridPointerDown}

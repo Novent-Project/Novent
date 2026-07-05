@@ -84,10 +84,14 @@ export class AnalysisState {
 	readonly segments = SEGMENTS;
 
 	selectedLap     = $state<Lap | null>(null);
-	compLaps        = $state<CompLap[]>([]);
+	// $state.raw: these hold large sample arrays that hot paths (canvas
+	// drawing, per-frame index lookups) iterate — a deep proxy would put a
+	// trap on every element read. All updates already replace the value
+	// wholesale rather than mutating in place.
+	compLaps        = $state.raw<CompLap[]>([]);
 	currentTrace    = $state.raw<Trace>(EMPTY_TRACE);
-	dsTrace         = $state<DownsampledTrace | null>(null);
-	boundaries      = $state<TrackBoundaries | null>(null);
+	dsTrace         = $state.raw<DownsampledTrace | null>(null);
+	boundaries      = $state.raw<TrackBoundaries | null>(null);
 	resolvedLapTime = $state(0);
 	fitKey          = $state(0);
 
@@ -101,6 +105,12 @@ export class AnalysisState {
 	#rafId    = 0;
 	#token    = 0;
 
+	/** Last known ghost index per comparison uuid — the `hint` that keeps
+	 *  traceIndexAtTime amortized O(1) during playback. Correctness never
+	 *  depends on it (a stale hint just means a binary-search fallback). */
+	#compIdxHints = new Map<string, number>();
+	#resumeOnActivate = false;
+
 	constructor(private readonly data: DataState) {}
 
 	// ---------- derived ----------
@@ -110,10 +120,20 @@ export class AnalysisState {
 	driverName     = $derived(this.selectedLap?.player_name || 'You');
 	currentSegment = $derived(segmentIndex(this.curNorm, SEGMENTS));
 
-	compIdxNow = $derived.by(() => {
-		const c = this.compLaps[0];
-		return c ? traceIndexAtTime(c.trace.time, this.currentTime) : -1;
-	});
+	/** Each comparison lap's sample index at the current playback time (-1 if
+	 *  it has no samples). Computed once per frame here and shared by every
+	 *  consumer (compSample, compEntries, the map's ghost dots) instead of
+	 *  each doing its own lookup. */
+	compIndices = $derived.by(() =>
+		this.compLaps.map(c => {
+			if (!c.trace.time.length) return -1;
+			const idx = traceIndexAtTime(c.trace.time, this.currentTime, this.#compIdxHints.get(c.lap.uuid) ?? 0);
+			this.#compIdxHints.set(c.lap.uuid, idx);
+			return idx;
+		})
+	);
+
+	compIdxNow = $derived(this.compIndices[0] ?? -1);
 
 	compSample = $derived.by((): Sample | null => {
 		const c = this.compLaps[0];
@@ -132,9 +152,8 @@ export class AnalysisState {
 
 	compEntries = $derived.by((): CompEntry[] =>
 		this.compLaps.map((c, i) => {
-			const hasSamples = c.trace.time.length > 0;
-			const idx        = hasSamples ? Math.max(0, traceIndexAtTime(c.trace.time, this.currentTime)) : 0;
-			const sample: Sample = hasSamples
+			const idx = this.compIndices[i] ?? -1;
+			const sample: Sample = idx >= 0
 				? sampleAt(c.trace, idx)
 				: { throttle: 0, brake: 0, speed: 0, gear: 0, rpm: 0 };
 			return {
@@ -217,6 +236,7 @@ export class AnalysisState {
 		this.stopPlayback();
 		this.selectedLap = lap;
 		this.compLaps    = [];
+		this.#compIdxHints.clear();
 		this.fitKey++;
 
 		const lapTimeSec = parseLapTime(lap.lap_time || lap.time || '');
@@ -254,6 +274,7 @@ export class AnalysisState {
 
 	removeCompLap(uuid: string) {
 		this.compLaps = this.compLaps.filter(c => c.lap.uuid !== uuid);
+		this.#compIdxHints.delete(uuid);
 	}
 
 	toggleGhost(uuid: string) {
@@ -266,6 +287,23 @@ export class AnalysisState {
 		this.stopPlayback();
 		this.selectedLap = null;
 		this.compLaps    = [];
+		this.#compIdxHints.clear();
+	}
+
+	// ---------- tab visibility ----------
+	/** Pause the playback loop while this state's tab is in the background —
+	 *  nothing renders it, so the rAF loop would just burn frames. Remembers
+	 *  whether playback was running so activate() can pick it back up. */
+	deactivate() {
+		if (this.isPlaying) this.#resumeOnActivate = true;
+		this.stopPlayback();
+	}
+
+	activate() {
+		if (this.#resumeOnActivate) {
+			this.#resumeOnActivate = false;
+			this.startPlayback();
+		}
 	}
 
 	// ---------- playback ----------

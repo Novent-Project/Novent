@@ -33,8 +33,8 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<div class="quit-overlay" onclick={onClose} role="presentation">
-	<div class="quit-panel" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Quit Novent">
+<div class="quit-overlay" onclick={(e) => { if (e.target === e.currentTarget) onClose(); }} role="presentation">
+	<div class="quit-panel" role="dialog" aria-modal="true" aria-label="Quit Novent" tabindex="-1">
 		<h2>Quit Novent?</h2>
 		<p>You can keep it running quietly in the background, or close it completely.</p>
 

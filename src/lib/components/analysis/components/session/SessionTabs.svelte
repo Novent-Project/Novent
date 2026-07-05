@@ -22,7 +22,7 @@
 
 <div class="session-tabs" role="tablist">
   {#each tabs as tab (tab.id)}
-    <div class="tab" class:active={tab.active} role="tab" aria-selected={tab.active}>
+    <div class="tab" class:active={tab.active} class:loading={tab.loading} role="tab" aria-selected={tab.active}>
       <button type="button" class="label-btn" onclick={() => onSelect(tab.id)}>
         {#if tab.loading}
           <span class="spinner" aria-hidden="true"></span>

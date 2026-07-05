@@ -5,6 +5,10 @@ interface CompLap {
 	trace: Trace;
 	ds:    DownsampledTrace;
 	color: string;
+	/** Sample index of this lap's ghost dot at the current playback time
+	 *  (-1 = no samples). Computed by the caller (AnalysisState.compIndices)
+	 *  so the per-frame lookup happens once, not per consumer. */
+	idx:   number;
 }
 
 export function isGarbage(x: number, z: number): boolean {
@@ -109,32 +113,77 @@ export function fitMap(
 	};
 }
 
-export function drawMap(
-	canvas:     HTMLCanvasElement | null,
+/**
+ * Everything drawn on the map that doesn't move during playback — boundaries,
+ * the colored racing line, ghost polylines, the start dot — cached on an
+ * offscreen canvas so each playback frame is a blit plus the moving dots.
+ * Rebuilt only when a keyed input changes (pan/zoom, resize, new traces,
+ * boundaries arriving, ghosts toggled).
+ */
+interface StaticLayer {
+	canvas:      HTMLCanvasElement;
+	w:           number;
+	h:           number;
+	dpr:         number;
+	trace:       Trace | null;
+	ds:          DownsampledTrace | null;
+	scale:       number;
+	offsetX:     number;
+	offsetY:     number;
+	boundaries:  TrackBoundaries | null;
+	boundaryFix: BoundaryFix | null;
+	compTraces:  Trace[];
+	compColors:  string[];
+	/** Trace bounding-box diagonal — only depends on `trace`, cached with it. */
+	diagLen:     number;
+	/** Bleed margin (screen px) baked around the viewport so mid-gesture pans
+	 *  don't reveal blank canvas at the edges. */
+	margin:      number;
+}
+
+const staticLayers = new WeakMap<HTMLCanvasElement, StaticLayer>();
+
+function traceDiagonal(trace: Trace): number {
+	let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+	for (let i = 0; i < trace.worldX.length; i++) {
+		const x = trace.worldX[i], z = trace.worldZ[i];
+		if (isGarbage(x, z)) continue;
+		if (x < minX) minX = x; if (x > maxX) maxX = x;
+		if (z < minZ) minZ = z; if (z > maxZ) maxZ = z;
+	}
+	return isFinite(minX) ? Math.sqrt((maxX - minX) ** 2 + (maxZ - minZ) ** 2) : 1;
+}
+
+function renderStaticLayer(
+	layer:      StaticLayer,
 	w:          number,
 	h:          number,
+	dpr:        number,
 	trace:      Trace,
 	ds:         DownsampledTrace | null,
 	scale:      number,
 	offsetX:    number,
 	offsetY:    number,
-	idx:        number,
 	boundaries: TrackBoundaries | null,
 	compLaps:   CompLap[],
-	boundaryFix: BoundaryFix | null = null
+	boundaryFix: BoundaryFix | null
 ) {
-	if (!canvas || !trace.worldX.length) return;
-
-	const dpr = window.devicePixelRatio || 1;
-	canvas.width  = w * dpr;
-	canvas.height = h * dpr;
+	const canvas = layer.canvas;
+	const m     = layer.margin;
+	const fullW = w + 2 * m;
+	const fullH = h + 2 * m;
+	if (canvas.width !== fullW * dpr || canvas.height !== fullH * dpr) {
+		canvas.width  = fullW * dpr;
+		canvas.height = fullH * dpr;
+	}
 	const ctx = canvas.getContext('2d')!;
-	ctx.scale(dpr, dpr);
-	ctx.clearRect(0, 0, w, h);
+	ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+	ctx.clearRect(0, 0, fullW, fullH);
 
+	// Shifted by the margin so the viewport sits centered in the larger bitmap.
 	const toScreen = (wx: number, wz: number) => ({
-		sx: wx  *  scale + offsetX,
-		sz: wz  * -scale + offsetY,
+		sx: wx  *  scale + offsetX + m,
+		sz: wz  * -scale + offsetY + m,
 	});
 
 	if (boundaries?.inner && boundaries?.outer) {
@@ -170,15 +219,8 @@ export function drawMap(
 		}
 	}
 
-	const total = trace.worldX.length;
-	let bMinX = Infinity, bMaxX = -Infinity, bMinZ = Infinity, bMaxZ = -Infinity;
-	for (let i = 0; i < total; i++) {
-		const x = trace.worldX[i], z = trace.worldZ[i];
-		if (isGarbage(x, z)) continue;
-		if (x < bMinX) bMinX = x; if (x > bMaxX) bMaxX = x;
-		if (z < bMinZ) bMinZ = z; if (z > bMaxZ) bMaxZ = z;
-	}
-	const diagLen  = isFinite(bMinX) ? Math.sqrt((bMaxX - bMinX) ** 2 + (bMaxZ - bMinZ) ** 2) : 1;
+	const total    = trace.worldX.length;
+	const diagLen  = layer.diagLen;
 	const lineStep = Math.max(1, Math.floor(total / (Math.max(diagLen, 1) * 2)));
 
 	if (ds) {
@@ -236,41 +278,130 @@ export function drawMap(
 	for (const comp of compLaps) {
 		const ctrace = comp.trace;
 		const ctotal = ctrace.worldX.length;
-		if (ctotal) {
-			const cLineStep = Math.max(1, Math.floor(ctotal / (Math.max(diagLen, 1) * 2)));
-			ctx.beginPath();
-			ctx.strokeStyle = comp.color;
-			ctx.globalAlpha = 0.55;
-			ctx.lineWidth   = 2;
-			ctx.lineCap     = 'round';
-			ctx.lineJoin    = 'round';
-			let first = true;
-			for (let i = 0; i < ctotal; i += cLineStep) {
-				const wx = ctrace.worldX[i], wz = ctrace.worldZ[i];
-				if (isGarbage(wx, wz)) continue;
-				const { sx, sz } = toScreen(wx, wz);
-				first ? ctx.moveTo(sx, sz) : ctx.lineTo(sx, sz);
-				first = false;
-			}
-			ctx.stroke();
-			ctx.globalAlpha = 1;
-		}
-
-		const t          = trace.time[idx] ?? 0;
-		const compRawIdx = ctrace.time.findIndex(pt => pt >= t);
-		const ci         = compRawIdx === -1 ? ctrace.time.length - 1 : compRawIdx;
-		const wx         = ctrace.worldX[ci];
-		const wz         = ctrace.worldZ[ci];
-		if (!isGarbage(wx, wz)) {
+		if (!ctotal) continue;
+		const cLineStep = Math.max(1, Math.floor(ctotal / (Math.max(diagLen, 1) * 2)));
+		ctx.beginPath();
+		ctx.strokeStyle = comp.color;
+		ctx.globalAlpha = 0.55;
+		ctx.lineWidth   = 2;
+		ctx.lineCap     = 'round';
+		ctx.lineJoin    = 'round';
+		let first = true;
+		for (let i = 0; i < ctotal; i += cLineStep) {
+			const wx = ctrace.worldX[i], wz = ctrace.worldZ[i];
+			if (isGarbage(wx, wz)) continue;
 			const { sx, sz } = toScreen(wx, wz);
-			ctx.beginPath();
-			ctx.fillStyle   = comp.color;
-			ctx.shadowColor = comp.color;
-			ctx.shadowBlur  = 10;
-			ctx.arc(sx, sz, 5, 0, Math.PI * 2);
-			ctx.fill();
-			ctx.shadowBlur = 0;
+			first ? ctx.moveTo(sx, sz) : ctx.lineTo(sx, sz);
+			first = false;
 		}
+		ctx.stroke();
+		ctx.globalAlpha = 1;
+	}
+}
+
+export function drawMap(
+	canvas:     HTMLCanvasElement | null,
+	w:          number,
+	h:          number,
+	trace:      Trace,
+	ds:         DownsampledTrace | null,
+	scale:      number,
+	offsetX:    number,
+	offsetY:    number,
+	idx:        number,
+	boundaries: TrackBoundaries | null,
+	compLaps:   CompLap[],
+	boundaryFix: BoundaryFix | null = null,
+	interacting: boolean = false
+) {
+	if (!canvas || !trace.worldX.length) return;
+
+	const dpr = window.devicePixelRatio || 1;
+	if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
+		canvas.width  = w * dpr;
+		canvas.height = h * dpr;
+	}
+	const ctx = canvas.getContext('2d')!;
+	ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+	ctx.clearRect(0, 0, w, h);
+
+	let layer = staticLayers.get(canvas);
+	if (!layer) {
+		layer = {
+			canvas: document.createElement('canvas'),
+			w: 0, h: 0, dpr: 0,
+			trace: null, ds: null,
+			scale: 0, offsetX: NaN, offsetY: NaN,
+			boundaries: null, boundaryFix: null,
+			compTraces: [], compColors: [],
+			diagLen: 1,
+			margin: 0,
+		};
+		staticLayers.set(canvas, layer);
+	}
+
+	// compLaps is a fresh array each call — compare by the identities that
+	// affect the static drawing (which traces, in what colors).
+	const compsChanged =
+		layer.compTraces.length !== compLaps.length ||
+		compLaps.some((c, i) => layer.compTraces[i] !== c.trace || layer.compColors[i] !== c.color);
+
+	const geometryDirty = layer.w !== w || layer.h !== h || layer.dpr !== dpr ||
+		layer.trace !== trace || layer.ds !== ds ||
+		layer.boundaries !== boundaries || layer.boundaryFix !== boundaryFix || compsChanged;
+	
+	const transformDirty = layer.scale !== scale || layer.offsetX !== offsetX || layer.offsetY !== offsetY;
+
+	// Blit geometry: where the baked bitmap lands on screen at the current
+	// transform (collapses to k=1, tx=ty=0 when the transforms match).
+	let k  = scale / layer.scale;
+	let tx = offsetX - k * layer.offsetX;
+	let ty = offsetY - k * layer.offsetY;
+
+	// Does the baked bitmap (viewport + bleed margin) still cover the whole
+	// viewport at the current transform? A gesture that outruns the margin
+	// forces a mid-gesture re-bake — one frame's hitch instead of black edges.
+	const covered =
+		tx - k * layer.margin <= 0 &&
+		ty - k * layer.margin <= 0 &&
+		tx - k * layer.margin + (w + 2 * layer.margin) * k >= w &&
+		ty - k * layer.margin + (h + 2 * layer.margin) * k >= h;
+
+	if (geometryDirty || (transformDirty && (!interacting || !covered)))
+	{
+		if (layer.trace !== trace) layer.diagLen = traceDiagonal(trace);
+		layer.w = w; layer.h = h; layer.dpr = dpr;
+		layer.trace = trace; layer.ds = ds;
+		layer.scale = scale; layer.offsetX = offsetX; layer.offsetY = offsetY;
+		layer.boundaries = boundaries; layer.boundaryFix = boundaryFix;
+		layer.compTraces = compLaps.map(c => c.trace);
+		layer.compColors = compLaps.map(c => c.color);
+		layer.margin = Math.round(Math.min(w, h) / 3);
+		renderStaticLayer(layer, w, h, dpr, trace, ds, scale, offsetX, offsetY, boundaries, compLaps, boundaryFix);
+		k = 1; tx = 0; ty = 0;
+	}
+
+	const m = layer.margin;
+	ctx.drawImage(layer.canvas, tx - k * m, ty - k * m, (w + 2 * m) * k, (h + 2 * m) * k);
+
+	const toScreen = (wx: number, wz: number) => ({
+		sx: wx  *  scale + offsetX,
+		sz: wz  * -scale + offsetY,
+	});
+
+	for (const comp of compLaps) {
+		if (comp.idx < 0) continue;
+		const wx = comp.trace.worldX[comp.idx];
+		const wz = comp.trace.worldZ[comp.idx];
+		if (isGarbage(wx, wz)) continue;
+		const { sx, sz } = toScreen(wx, wz);
+		ctx.beginPath();
+		ctx.fillStyle   = comp.color;
+		ctx.shadowColor = comp.color;
+		ctx.shadowBlur  = 10;
+		ctx.arc(sx, sz, 5, 0, Math.PI * 2);
+		ctx.fill();
+		ctx.shadowBlur = 0;
 	}
 
 	const carWX = trace.worldX[idx];

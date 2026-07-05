@@ -101,8 +101,6 @@
 		transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
 	}
 
-	.orb svg { width: 18px; height: 18px; }
-
 	.item.connected .orb {
 		color: var(--color-accent);
 		background: var(--color-accent-dim);

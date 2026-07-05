@@ -2,7 +2,7 @@
 	import { getContext } from 'svelte';
 	import type { DataState } from '$lib/state/data.svelte';
 	import { fetchTelemetry } from '$lib/api';
-	import type { Trace } from '$lib/canvas';
+	import type { Trace } from '$lib/utils/canvas/shared';
 	import StatCard from '$lib/components/dashboard/StatCard.svelte';
 	import PeripheralsCard from '$lib/components/dashboard/PeripheralsCard.svelte';
 	import LatestSessionCard from '$lib/components/dashboard/LatestSessionCard.svelte';

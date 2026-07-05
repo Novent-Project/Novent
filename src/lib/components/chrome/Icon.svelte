@@ -3,8 +3,7 @@
 </script>
 
 <script lang="ts">
-	import { Icon as SteezeIcon } from '@steeze-ui/svelte-icon';
-	import type { IconSource } from '@steeze-ui/svelte-icon/types';
+	import { Icon as SteezeIcon, type IconSource } from '@steeze-ui/svelte-icon';
 
 	interface Props {
 		/** A @steeze-ui icon source (e.g. from @steeze-ui/heroicons). */

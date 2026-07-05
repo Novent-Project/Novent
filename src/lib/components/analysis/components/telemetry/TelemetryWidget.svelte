@@ -26,6 +26,9 @@
 	<div class="accent"></div>
 
 	<div class="row-main">
+		<!-- svelte-ignore a11y_no_static_element_interactions -- renders a real
+		     <button> whenever onToggleGhost is set; the div branch gets
+		     onclick={undefined} and isn't interactive at all. -->
 		<svelte:element
 			this={onToggleGhost ? 'button' : 'div'}
 			class="avatar"
