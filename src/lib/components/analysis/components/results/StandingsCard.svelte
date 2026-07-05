@@ -1,17 +1,27 @@
 <script lang="ts">
+	import ComparisonPicker from '$lib/components/analysis/components/session/ComparisonPicker.svelte';
+	import type { Lap } from '$lib/api';
+
 	interface Entry {
 		pos: number;
 		name: string;
 		time: string;
 		gap?: string;
 		isPrimary?: boolean;
+		uuid?: string;
+		color?: string;
 	}
 
 	interface Props {
-		entries: Entry[];
+		entries:    Entry[];
+		candidates: Lap[];
+		onAddComparison:    (lap: Lap) => void;
+		onRemoveComparison: (uuid: string) => void;
+		/** True once the comparison cap is reached — disables the add button. */
+		maxReached?: boolean;
 	}
 
-	let { entries }: Props = $props();
+	let { entries, candidates, onAddComparison, onRemoveComparison, maxReached = false }: Props = $props();
 
 	const rows = $derived(entries ?? []);
 </script>
@@ -23,7 +33,11 @@
 		{#each rows as entry, i (entry.pos)}
 			<div class="row" class:primary={entry.isPrimary}>
 				<span class="pos mono">{entry.pos}</span>
-				<span class="avatar" aria-hidden="true"></span>
+				<span
+					class="avatar"
+					style={entry.color ? `border-color: ${entry.color};` : ''}
+					aria-hidden="true"
+				></span>
 				<span class="name" class:strong={entry.isPrimary}>{entry.name}</span>
 				<span class="spacer"></span>
 				{#if entry.isPrimary || i === 0}
@@ -33,9 +47,20 @@
 				{:else}
 					<span class="value mono">{entry.time}</span>
 				{/if}
+				{#if entry.uuid}
+					<button
+						class="row-remove"
+						onclick={() => onRemoveComparison(entry.uuid ?? '')}
+						aria-label="Remove comparison"
+					>×</button>
+				{/if}
 			</div>
 		{/each}
 	{/if}
+
+	<div class="add-row">
+		<ComparisonPicker {candidates} onPick={onAddComparison} disabled={maxReached} />
+	</div>
 </div>
 
 <style>
@@ -117,5 +142,28 @@
 
 	.value.gap {
 		color: var(--color-amber);
+	}
+
+	.row-remove {
+		flex-shrink: 0;
+		width: 18px;
+		height: 18px;
+		border-radius: 50%;
+		background: none;
+		border: 1px solid var(--card-border);
+		color: var(--color-muted);
+		cursor: pointer;
+		font-size: 12px;
+		line-height: 1;
+		padding: 0;
+	}
+
+	.row-remove:hover {
+		color: var(--color-red);
+		border-color: var(--color-red);
+	}
+
+	.add-row {
+		margin-top: 8px;
 	}
 </style>

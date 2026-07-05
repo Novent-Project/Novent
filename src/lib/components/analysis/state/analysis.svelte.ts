@@ -9,11 +9,12 @@ import {
 import type { DataState } from '$lib/state/data.svelte.js';
 
 export interface CompLap {
-	lap:     Lap;
-	trace:   Trace;
-	ds:      DownsampledTrace;
-	color:   string;
-	lapTime: number;
+	lap:          Lap;
+	trace:        Trace;
+	ds:           DownsampledTrace;
+	color:        string;
+	lapTime:      number;
+	ghostVisible: boolean;
 }
 
 export type PlayMode = 'time' | 'distance';
@@ -24,6 +25,10 @@ export interface Standing {
 	time:       string;
 	gap?:       string;
 	isPrimary?: boolean;
+	/** Comparison-lap uuid, present on non-primary rows so the leaderboard can remove them. */
+	uuid?:      string;
+	/** Ghost color for this row, mirrored on the map and telemetry widget. */
+	color?:     string;
 }
 
 export interface SectorRow {
@@ -46,9 +51,21 @@ export interface DriverTelemetry {
 	rpm:      number;
 }
 
+/** A comparison lap's live telemetry, paired with the identity needed to
+ *  toggle/remove it — what TelemetryView actually renders per widget. */
+export interface CompEntry {
+	uuid:         string;
+	driver:       DriverTelemetry;
+	ghostVisible: boolean;
+}
+
 const SEGMENTS    = 8;
-const COMP_COLOR  = '#e5e7eb';
 const DRIVER_COLOR = '#10b981';
+
+// One color per comparison slot, cycled if more comparisons are added than
+// colors — distinguishes ghosts on the map and their telemetry widgets.
+const COMP_COLORS = ['#e5e7eb', '#f59e0b', '#38bdf8', '#c084fc', '#fb7185', '#facc15'];
+export const MAX_COMP_LAPS = COMP_COLORS.length;
 
 function buildDriverTelemetry(
 	name: string, color: string, lapNum: number, lapTime: string, sample: Sample,
@@ -79,7 +96,6 @@ export class AnalysisState {
 	currentTime   = $state(0);
 	playbackIdx   = $state(0);
 	playMode      = $state<PlayMode>('distance');
-	showGhost     = $state(true);
 
 	#exactIdx = 0;
 	#rafId    = 0;
@@ -114,17 +130,26 @@ export class AnalysisState {
 		)
 	);
 
-	compDriver = $derived.by((): DriverTelemetry | null => {
-		const c = this.compLaps[0];
-		if (!c || !this.compSample) return null;
-		return buildDriverTelemetry(
-			c.lap.player_name || 'Reference',
-			c.color,
-			c.lap.completed_laps ?? 1,
-			c.lap.lap_time ?? '—',
-			this.compSample,
-		);
-	});
+	compEntries = $derived.by((): CompEntry[] =>
+		this.compLaps.map((c, i) => {
+			const hasSamples = c.trace.time.length > 0;
+			const idx        = hasSamples ? Math.max(0, traceIndexAtTime(c.trace.time, this.currentTime)) : 0;
+			const sample: Sample = hasSamples
+				? sampleAt(c.trace, idx)
+				: { throttle: 0, brake: 0, speed: 0, gear: 0, rpm: 0 };
+			return {
+				uuid:         c.lap.uuid,
+				ghostVisible: c.ghostVisible,
+				driver: buildDriverTelemetry(
+					c.lap.player_name || `Reference ${i + 1}`,
+					c.color,
+					c.lap.completed_laps ?? 1,
+					c.lap.lap_time ?? '—',
+					sample,
+				),
+			};
+		})
+	);
 
 	segDelta = $derived.by(() => {
 		const ref = this.compLaps[0]?.ds;
@@ -155,6 +180,8 @@ export class AnalysisState {
 				name: `Reference ${i + 1}`,
 				time: formatTime(c.lapTime),
 				gap:  showGap ? `${gap >= 0 ? '+' : ''}${gap.toFixed(3)}` : undefined,
+				uuid:  c.lap.uuid,
+				color: c.color,
 			});
 		});
 		return rows;
@@ -215,17 +242,24 @@ export class AnalysisState {
 	}
 
 	async addCompLap(lap: Lap) {
-		if (this.compLaps.length >= 1 || this.selectedLap?.uuid === lap.uuid) return;
+		if (this.compLaps.length >= MAX_COMP_LAPS || this.selectedLap?.uuid === lap.uuid) return;
 		if (this.compLaps.some(c => c.lap.uuid === lap.uuid)) return;
 		const trace      = makeTrace(await fetchTelemetry(lap.uuid));
 		const lapTimeSec = parseLapTime(lap.lap_time || lap.time || '');
 		const ds         = downsample(trace, lapTimeSec);
 		if (!ds) return;
-		this.compLaps = [{ lap, trace, ds, color: COMP_COLOR, lapTime: lapTimeSec }];
+		const color = COMP_COLORS[this.compLaps.length % COMP_COLORS.length];
+		this.compLaps = [...this.compLaps, { lap, trace, ds, color, lapTime: lapTimeSec, ghostVisible: true }];
 	}
 
-	removeComp() {
-		this.compLaps = [];
+	removeCompLap(uuid: string) {
+		this.compLaps = this.compLaps.filter(c => c.lap.uuid !== uuid);
+	}
+
+	toggleGhost(uuid: string) {
+		this.compLaps = this.compLaps.map(c =>
+			c.lap.uuid === uuid ? { ...c, ghostVisible: !c.ghostVisible } : c
+		);
 	}
 
 	clear() {
@@ -284,10 +318,6 @@ export class AnalysisState {
 
 	setPlayMode(mode: PlayMode) {
 		this.playMode = mode;
-	}
-
-	toggleGhost() {
-		this.showGhost = !this.showGhost;
 	}
 
 	destroy() {

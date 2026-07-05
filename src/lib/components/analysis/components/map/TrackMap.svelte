@@ -21,7 +21,7 @@
 			analysis.currentTrace, analysis.dsTrace,
 			map.scale, map.offsetX, map.offsetY,
 			analysis.playbackIdx, analysis.boundaries,
-			analysis.showGhost ? analysis.compLaps : [],
+			analysis.compLaps.filter(c => c.ghostVisible),
 			map.boundaryFix,
 		);
 	});

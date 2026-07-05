@@ -1,0 +1,602 @@
+<script lang="ts">
+	import { formatTime, traceIndexAtTime } from '$lib/utils';
+	import { buildChartLine, symmetricRange } from '$lib/utils/chart';
+	import PlaybarChart from '$lib/components/analysis/components/telemetry/PlaybarChart.svelte';
+	import type { AnalysisState } from '$lib/components/analysis/state';
+
+	interface Props {
+		analysis: AnalysisState;
+		/** Lets the caller offer a way back to the inline (HudPlaybar) mode
+		 *  without the sidebar needing to know about `graphMode` itself. */
+		onClose?: () => void;
+	}
+
+	let { analysis, onClose }: Props = $props();
+
+	// Sidebar has real vertical room to work with, unlike the squeezed
+	// 40px rows under the playbar, so each channel gets a taller track.
+	const ROW_H = 128;
+
+	let sidebarEl = $state<HTMLDivElement | null>(null);
+	let chartTrackEl = $state<HTMLDivElement | null>(null);
+	let chartW = $state(0);
+	let scrubbing = $state(false);
+
+	let pct = $derived(analysis.resolvedLapTime > 0 ? (analysis.currentTime / analysis.resolvedLapTime) * 100 : 0);
+	let pctClamped = $derived(Math.min(Math.max(pct, 0), 100));
+	let playheadX = $derived(chartW * (pctClamped / 100));
+
+	let primaryColor = $derived(analysis.primaryDriver.color);
+	let primaryName = $derived(analysis.driverName);
+	let primaryDs = $derived(analysis.dsTrace);
+
+	// Same ghost-visibility source of truth as HudPlaybar/TelemetryWidget —
+	// laps toggled off there drop out of this chart and its tooltip too.
+	let visibleComps = $derived(
+		analysis.compLaps
+			.map((c, i) => ({ ...c, label: c.lap.player_name || `Reference ${i + 1}` }))
+			.filter(c => c.ghostVisible)
+	);
+
+	let throttlePrimary = $derived(
+		primaryDs
+			? buildChartLine(primaryDs.time, primaryDs.gas, analysis.resolvedLapTime, chartW, ROW_H, { min: 0, max: 1, baseline: 0 })
+			: { line: '', area: '' }
+	);
+	let throttleComps = $derived(
+		visibleComps.map(c => ({
+			color: c.color,
+			label: c.label,
+			...buildChartLine(c.ds.time, c.ds.gas, analysis.resolvedLapTime, chartW, ROW_H, { min: 0, max: 1 })
+		}))
+	);
+
+	let brakePrimary = $derived(
+		primaryDs
+			? buildChartLine(primaryDs.time, primaryDs.brake, analysis.resolvedLapTime, chartW, ROW_H, { min: 0, max: 1, baseline: 0 })
+			: { line: '', area: '' }
+	);
+	let brakeComps = $derived(
+		visibleComps.map(c => ({
+			color: c.color,
+			label: c.label,
+			...buildChartLine(c.ds.time, c.ds.brake, analysis.resolvedLapTime, chartW, ROW_H, { min: 0, max: 1 })
+		}))
+	);
+
+	let steerRange = $derived(symmetricRange(primaryDs?.steer ?? [], ...visibleComps.map(c => c.ds.steer)));
+	let steerPrimary = $derived(
+		primaryDs
+			? buildChartLine(primaryDs.time, primaryDs.steer, analysis.resolvedLapTime, chartW, ROW_H, steerRange)
+			: { line: '', area: '' }
+	);
+	let steerComps = $derived(
+		visibleComps.map(c => ({
+			color: c.color,
+			label: c.label,
+			...buildChartLine(c.ds.time, c.ds.steer, analysis.resolvedLapTime, chartW, ROW_H, steerRange)
+		}))
+	);
+
+	let tickStep = $derived(analysis.resolvedLapTime > 90 ? 10 : analysis.resolvedLapTime > 40 ? 5 : 1);
+	let ticks = $derived.by(() => {
+		const out: number[] = [];
+		for (let t = tickStep; t < analysis.resolvedLapTime; t += tickStep) out.push(t);
+		return out;
+	});
+
+	function seekFromClientX(clientX: number) {
+		if (!chartTrackEl || analysis.resolvedLapTime <= 0 || chartW <= 0) return;
+		const rect = chartTrackEl.getBoundingClientRect();
+		const mouseX = Math.min(rect.width, Math.max(0, clientX - rect.left));
+		const originX = panX + mouseX / zoom;
+		const t = Math.min(analysis.resolvedLapTime, Math.max(0, (originX / chartW) * analysis.resolvedLapTime));
+		analysis.seek(t);
+	}
+
+	// ---------- chart pan / zoom (identical scheme to HudPlaybar) ----------
+	const ZOOM_MIN = 1;
+	const ZOOM_MAX = 20;
+
+	let zoom = $state(1);
+	let panX = $state(0);
+	let panning = $state(false);
+	let panStartClientX = 0;
+	let panStartX = 0;
+
+	let maxPanX = $derived(chartW > 0 ? Math.max(0, chartW - chartW / zoom) : 0);
+
+	function clampPan(p: number): number {
+		return Math.min(maxPanX, Math.max(0, p));
+	}
+
+	function zoomAt(clientX: number, factor: number) {
+		if (!chartTrackEl || chartW <= 0) return;
+		const rect = chartTrackEl.getBoundingClientRect();
+		const mouseX = Math.min(rect.width, Math.max(0, clientX - rect.left));
+		const originX = panX + mouseX / zoom;
+		const newZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom * factor));
+		zoom = newZoom;
+		panX = clampPan(originX - mouseX / newZoom);
+	}
+
+	function onChartWheel(e: WheelEvent) {
+		e.preventDefault();
+		const factor = Math.exp(-e.deltaY * 0.0015);
+		zoomAt(e.clientX, factor);
+	}
+
+	function resetZoom() {
+		zoom = 1;
+		panX = 0;
+	}
+
+	// ---------- hover crosshair / tooltip ----------
+	type Channel = 'throttle' | 'brake' | 'steer';
+	const CHANNEL_LABEL: Record<Channel, string> = { throttle: 'Throttle', brake: 'Brake', steer: 'Steering' };
+
+	let hoverTime = $state<number | null>(null);
+	let hoverChannel = $state<Channel | null>(null);
+	// Anchored to sidebarEl's own box, same reasoning as HudPlaybar's
+	// hover-tooltip: a position:fixed tooltip would break under a
+	// backdrop-filter ancestor, so it's relative + absolute instead.
+	let hoverPos = $state({ x: 0, y: 0 });
+
+	function updateHover(e: PointerEvent) {
+		if (!chartTrackEl || !sidebarEl || chartW <= 0 || analysis.resolvedLapTime <= 0) return;
+		const trackRect = chartTrackEl.getBoundingClientRect();
+		const mouseX = Math.min(trackRect.width, Math.max(0, e.clientX - trackRect.left));
+		const originX = panX + mouseX / zoom;
+		hoverTime = Math.min(analysis.resolvedLapTime, Math.max(0, (originX / chartW) * analysis.resolvedLapTime));
+
+		const rowEl = (e.target as HTMLElement).closest<HTMLElement>('.grid-track[data-channel]');
+		hoverChannel = (rowEl?.dataset.channel as Channel | undefined) ?? null;
+
+		const cardRect = sidebarEl.getBoundingClientRect();
+		hoverPos = { x: e.clientX - cardRect.left, y: e.clientY - cardRect.top };
+	}
+
+	function clearHover() {
+		hoverTime = null;
+		hoverChannel = null;
+	}
+
+	let hoverX = $derived(
+		hoverTime !== null && analysis.resolvedLapTime > 0 ? (hoverTime / analysis.resolvedLapTime) * chartW : null
+	);
+
+	function channelValueAt(
+		ds: { time: number[]; gas: number[]; brake: number[]; steer: number[] } | null,
+		channel: Channel | null
+	): number | null {
+		if (!ds || hoverTime === null || !channel) return null;
+		const idx = traceIndexAtTime(ds.time, hoverTime);
+		if (channel === 'throttle') return ds.gas[idx] ?? 0;
+		if (channel === 'brake') return ds.brake[idx] ?? 0;
+		return ds.steer[idx] ?? 0;
+	}
+
+	function formatChannelValue(channel: Channel, v: number): string {
+		return channel === 'steer' ? v.toFixed(2) : `${Math.round(v * 100)}%`;
+	}
+
+	let hoverPrimaryValue = $derived(channelValueAt(primaryDs, hoverChannel));
+	let hoverCompRows = $derived.by(() => {
+		if (!hoverChannel) return [];
+		return visibleComps
+			.map(c => ({ color: c.color, name: c.label, value: channelValueAt(c.ds, hoverChannel) }))
+			.filter((r): r is { color: string; name: string; value: number } => r.value !== null);
+	});
+
+	function isRulerTarget(e: PointerEvent): boolean {
+		return !!(e.target as HTMLElement).closest('.ruler-track');
+	}
+
+	function wantsPan(e: PointerEvent): boolean {
+		return zoom > 1 && !isRulerTarget(e) && (e.shiftKey || e.altKey || e.button === 1);
+	}
+
+	function onStackPointerDown(e: PointerEvent) {
+		if (wantsPan(e)) {
+			panning = true;
+			panStartClientX = e.clientX;
+			panStartX = panX;
+			(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+			return;
+		}
+		scrubbing = true;
+		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+		seekFromClientX(e.clientX);
+	}
+
+	function onStackPointerMove(e: PointerEvent) {
+		updateHover(e);
+		if (scrubbing) {
+			seekFromClientX(e.clientX);
+			return;
+		}
+		if (panning) {
+			const dx = e.clientX - panStartClientX;
+			panX = clampPan(panStartX - dx / zoom);
+		}
+	}
+
+	function onStackPointerUp(e: PointerEvent) {
+		scrubbing = false;
+		panning = false;
+		(e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+	}
+</script>
+
+<div class="hud-card graph-sidebar" bind:this={sidebarEl}>
+	<div class="sidebar-header">
+		<span class="sidebar-title">Telemetry</span>
+		{#if zoom > 1}
+			<button class="zoom-badge" onclick={resetZoom} aria-label="Reset zoom">{zoom.toFixed(1)}× · reset</button>
+		{:else}
+			<span class="zoom-hint">Scroll to zoom · shift+drag to pan</span>
+		{/if}
+		{#if onClose}
+			<button class="icon-btn" onclick={onClose} aria-label="Close graph sidebar">
+				<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+					<path d="M4 4l8 8M12 4l-8 8" stroke-linecap="round" />
+				</svg>
+			</button>
+		{/if}
+	</div>
+
+	<div
+		class="chart-stack"
+		onpointerdown={onStackPointerDown}
+		onpointermove={onStackPointerMove}
+		onpointerup={onStackPointerUp}
+		onpointerleave={clearHover}
+		onwheel={onChartWheel}
+		ondblclick={resetZoom}
+	>
+		<div class="ruler-track" bind:this={chartTrackEl} bind:clientWidth={chartW}>
+			{#each ticks as t (t)}
+				<span class="tick" style="left:{((t / analysis.resolvedLapTime) * chartW - panX) * zoom}px">{t}</span>
+			{/each}
+			{#if chartW > 0}
+				<svg class="ruler-overlay" viewBox="0 0 {chartW} 16" preserveAspectRatio="none">
+					<g transform="translate({(-panX * zoom).toFixed(2)} 0) scale({zoom} 1)">
+						{#if hoverX !== null}<line x1={hoverX} x2={hoverX} y1="0" y2="16" class="crosshair" />{/if}
+						<line x1={playheadX} x2={playheadX} y1="0" y2="16" class="playhead" />
+					</g>
+				</svg>
+			{/if}
+		</div>
+
+		<!-- Each channel block wraps PlaybarChart (which renders its own
+		     label row above the track) and, once it knows its own width,
+		     overlays a crosshair/playhead absolutely pinned to the block's
+		     bottom edge — which lines up with the track's bottom exactly,
+		     whatever height the label row above happens to take. -->
+		<div class="channel-block">
+			<PlaybarChart
+				label="Throttle"
+				channel="throttle"
+				width={chartW}
+				height={ROW_H}
+				color={primaryColor}
+				line={throttlePrimary.line}
+				area={throttlePrimary.area}
+				compLines={throttleComps}
+				{zoom}
+				{panX}
+			>
+				{#snippet icon()}
+					<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+						<path d="M2 12a6 6 0 0 1 12 0" stroke-linecap="round" />
+						<path d="M8 12L11 7" stroke-linecap="round" />
+						<circle cx="8" cy="12" r="1" fill="currentColor" stroke="none" />
+					</svg>
+				{/snippet}
+			</PlaybarChart>
+			{#if chartW > 0}
+				<svg class="channel-overlay" style="height:{ROW_H}px" viewBox="0 0 {chartW} {ROW_H}" preserveAspectRatio="none">
+					<g transform="translate({(-panX * zoom).toFixed(2)} 0) scale({zoom} 1)">
+						{#if hoverX !== null}<line x1={hoverX} x2={hoverX} y1="0" y2={ROW_H} class="crosshair" />{/if}
+						<line x1={playheadX} x2={playheadX} y1="0" y2={ROW_H} class="playhead" />
+					</g>
+				</svg>
+			{/if}
+		</div>
+
+		<div class="channel-block">
+			<PlaybarChart
+				label="Brakes"
+				channel="brake"
+				width={chartW}
+				height={ROW_H}
+				color="var(--color-red)"
+				line={brakePrimary.line}
+				area={brakePrimary.area}
+				compLines={brakeComps}
+				{zoom}
+				{panX}
+			>
+				{#snippet icon()}
+					<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+						<circle cx="8" cy="8" r="5.5" />
+						<circle cx="8" cy="8" r="2" />
+					</svg>
+				{/snippet}
+			</PlaybarChart>
+			{#if chartW > 0}
+				<svg class="channel-overlay" style="height:{ROW_H}px" viewBox="0 0 {chartW} {ROW_H}" preserveAspectRatio="none">
+					<g transform="translate({(-panX * zoom).toFixed(2)} 0) scale({zoom} 1)">
+						{#if hoverX !== null}<line x1={hoverX} x2={hoverX} y1="0" y2={ROW_H} class="crosshair" />{/if}
+						<line x1={playheadX} x2={playheadX} y1="0" y2={ROW_H} class="playhead" />
+					</g>
+				</svg>
+			{/if}
+		</div>
+
+		<div class="channel-block">
+			<PlaybarChart
+				label="Steering"
+				channel="steer"
+				width={chartW}
+				height={ROW_H}
+				color={primaryColor}
+				line={steerPrimary.line}
+				compLines={steerComps}
+				{zoom}
+				{panX}
+			>
+				{#snippet icon()}
+					<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+						<circle cx="8" cy="8" r="6" />
+						<circle cx="8" cy="8" r="1.4" fill="currentColor" stroke="none" />
+						<path d="M8 2v3.2M3.4 10.8l2.8-1.6M12.6 10.8l-2.8-1.6" stroke-linecap="round" />
+					</svg>
+				{/snippet}
+			</PlaybarChart>
+			{#if chartW > 0}
+				<svg class="channel-overlay" style="height:{ROW_H}px" viewBox="0 0 {chartW} {ROW_H}" preserveAspectRatio="none">
+					<g transform="translate({(-panX * zoom).toFixed(2)} 0) scale({zoom} 1)">
+						{#if hoverX !== null}<line x1={hoverX} x2={hoverX} y1="0" y2={ROW_H} class="crosshair" />{/if}
+						<line x1={playheadX} x2={playheadX} y1="0" y2={ROW_H} class="playhead" />
+					</g>
+				</svg>
+			{/if}
+		</div>
+	</div>
+
+	{#if hoverChannel && hoverTime !== null && hoverPrimaryValue !== null}
+		<div class="hover-tooltip" style="left:{hoverPos.x}px; top:{hoverPos.y}px">
+			<div class="hover-header">
+				<span class="hover-title">{CHANNEL_LABEL[hoverChannel]} at</span>
+				<span class="hover-time mono">{formatTime(hoverTime)}</span>
+			</div>
+			<div class="hover-divider"></div>
+			<div class="hover-row">
+				<span class="hover-dot" style="background:{primaryColor}"></span>
+				<span class="hover-name">{primaryName}</span>
+				<span class="hover-value mono">{formatChannelValue(hoverChannel, hoverPrimaryValue)}</span>
+			</div>
+			{#each hoverCompRows as row (row.color)}
+				<div class="hover-row">
+					<span class="hover-dot" style="background:{row.color}"></span>
+					<span class="hover-name">{row.name}</span>
+					<span class="hover-value mono">{formatChannelValue(hoverChannel, row.value)}</span>
+				</div>
+			{/each}
+		</div>
+	{/if}
+</div>
+
+<style>
+	.graph-sidebar {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		height: 100%;
+		padding: 16px 18px;
+		gap: 14px;
+		overflow-y: auto;
+	}
+
+	.sidebar-header {
+		flex: none;
+		display: flex;
+		align-items: center;
+		gap: 10px;
+	}
+
+	.sidebar-title {
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--color-text);
+		margin-right: auto;
+	}
+
+	.zoom-hint {
+		font-size: 10.5px;
+		color: var(--color-muted);
+		opacity: 0.65;
+	}
+
+	.zoom-badge {
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-sm);
+		background: transparent;
+		color: var(--color-accent);
+		font-size: 10.5px;
+		font-family: var(--font-mono);
+		padding: 2px 8px;
+		cursor: pointer;
+	}
+
+	.zoom-badge:hover {
+		background: var(--card-bg);
+		color: var(--color-text);
+	}
+
+	.icon-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex: none;
+		width: 24px;
+		height: 24px;
+		border-radius: var(--radius-sm);
+		border: none;
+		background: transparent;
+		color: var(--color-muted);
+		cursor: pointer;
+		padding: 0;
+	}
+
+	.icon-btn:hover {
+		color: var(--color-text);
+		background: var(--card-bg);
+	}
+
+	.icon-btn svg {
+		width: 14px;
+		height: 14px;
+	}
+
+	.chart-stack {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+		cursor: ew-resize;
+		user-select: none;
+		touch-action: none;
+	}
+
+	.ruler-track {
+		position: relative;
+		flex: none;
+		height: 16px;
+		overflow: hidden;
+	}
+
+	.ruler-overlay {
+		position: absolute;
+		inset: 0;
+		overflow: visible;
+	}
+
+	.tick {
+		position: absolute;
+		top: 0;
+		transform: translateX(-50%);
+		font-size: 10px;
+		font-family: var(--font-mono);
+		color: var(--color-muted);
+		white-space: nowrap;
+	}
+
+	/* Wraps a PlaybarChart's label row + track (the label row's own height
+	   is whatever PlaybarChart renders it as — the overlay below doesn't
+	   need to know that, since it's pinned to the block's bottom edge). */
+	.channel-block {
+		position: relative;
+		flex: none;
+	}
+
+	.channel-overlay,
+	.ruler-overlay {
+		pointer-events: none;
+	}
+
+	.channel-overlay {
+		position: absolute;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		overflow: visible;
+	}
+
+	.channel-overlay .playhead,
+	.ruler-overlay .playhead {
+		stroke: var(--color-text);
+		stroke-width: 1.25;
+		opacity: 0.6;
+		vector-effect: non-scaling-stroke;
+	}
+
+	.channel-overlay .crosshair,
+	.ruler-overlay .crosshair {
+		stroke: var(--color-accent);
+		stroke-width: 1;
+		stroke-dasharray: 2 2;
+		opacity: 0.7;
+		vector-effect: non-scaling-stroke;
+	}
+
+	/* ---------- hover tooltip (same styling as HudPlaybar's) ---------- */
+
+	.hover-tooltip {
+		position: absolute;
+		z-index: 20;
+		transform: translate(-100%, -8px);
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+		min-width: 168px;
+		padding: 10px 12px;
+		border-radius: var(--radius-md, 10px);
+		border: 1px solid var(--color-border);
+		background: color-mix(in srgb, var(--color-bg) 92%, transparent);
+		backdrop-filter: blur(4px);
+		box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.5);
+		pointer-events: none;
+		white-space: nowrap;
+	}
+
+	.hover-header {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 12px;
+		font-size: 12.5px;
+		font-weight: 600;
+		color: var(--color-text);
+	}
+
+	.hover-time {
+		font-size: 12px;
+		color: var(--color-muted);
+	}
+
+	.hover-divider {
+		height: 1px;
+		margin: -2px 0;
+		background: var(--color-border);
+		opacity: 0.7;
+	}
+
+	.hover-row {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		font-size: 12px;
+	}
+
+	.hover-dot {
+		flex: none;
+		width: 2.5px;
+		align-self: stretch;
+		border-radius: var(--radius-pill);
+	}
+
+	.hover-name {
+		flex: 1 1 auto;
+		min-width: 46px;
+		color: var(--color-text);
+	}
+
+	.hover-value {
+		font-size: 12px;
+		font-weight: 600;
+		color: var(--color-text);
+		text-align: right;
+	}
+</style>

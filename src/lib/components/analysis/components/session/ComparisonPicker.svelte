@@ -1,21 +1,15 @@
 <script lang="ts">
-	import TelemetryWidget from '$lib/components/analysis/components/telemetry/TelemetryWidget.svelte';
 	import { formatName, formatDateTime } from '$lib/utils';
 	import type { Lap } from '$lib/api';
-	import type { DriverTelemetry } from '$lib/components/analysis/state';
 
 	interface Props {
-		driver:     DriverTelemetry | null;
 		candidates: Lap[];
 		onPick:     (lap: Lap) => void;
-		onRemove:   () => void;
-		/** Ghost-overlay visibility for this comparison driver, and the toggle for it â€”
-		 *  passed straight through to TelemetryWidget's avatar click target. */
-		showGhost?:     boolean;
-		onToggleGhost?: () => void;
+		/** True once the comparison cap is reached — disables the add button. */
+		disabled?:  boolean;
 	}
 
-	let { driver, candidates, onPick, onRemove, showGhost, onToggleGhost }: Props = $props();
+	let { candidates, onPick, disabled = false }: Props = $props();
 
 	let menuOpen = $state(false);
 
@@ -25,64 +19,39 @@
 	}
 </script>
 
-{#if driver}
-	<div class="comp-slot">
-		<TelemetryWidget {driver} ghostVisible={showGhost} {onToggleGhost} />
-		<button class="comp-remove" onclick={onRemove} aria-label="Remove comparison">×</button>
-	</div>
-{:else}
-	<div class="comp-empty hud-card">
-		<button class="comp-add" onclick={() => (menuOpen = !menuOpen)}>
-			+ Select comparison lap
-		</button>
-		{#if menuOpen}
-			<div class="comp-menu hud-card">
-				{#each candidates as l (l.uuid)}
-					<button class="comp-opt" onclick={() => pick(l)}>
-						<span class="comp-opt-info">
-							<span class="comp-opt-car">{formatName(l.car)}</span>
-							<span class="comp-opt-date mono">{formatDateTime(l.date_time)}</span>
-						</span>
-						<span class="mono">{l.lap_time || l.time}</span>
-					</button>
-				{:else}
-					<div class="comp-none">No other laps on this track</div>
-				{/each}
-			</div>
-		{/if}
-	</div>
-{/if}
+<div class="comp-picker">
+	<button
+		class="comp-add"
+		onclick={() => (menuOpen = !menuOpen)}
+		{disabled}
+		aria-label={disabled ? 'Comparison limit reached' : 'Add comparison lap'}
+	>
+		+ Compare lap
+	</button>
+	{#if menuOpen}
+		<div class="comp-menu hud-card">
+			{#each candidates as l (l.uuid)}
+				<button class="comp-opt" onclick={() => pick(l)}>
+					<span class="comp-opt-info">
+						<span class="comp-opt-car">{formatName(l.car)}</span>
+						<span class="comp-opt-date mono">{formatDateTime(l.date_time)}</span>
+					</span>
+					<span class="mono">{l.lap_time || l.time}</span>
+				</button>
+			{:else}
+				<div class="comp-none">No other laps on this track</div>
+			{/each}
+		</div>
+	{/if}
+</div>
 
 <style>
-	.comp-slot { position: relative; }
-
-	.comp-remove {
-		position: absolute;
-		top: -6px;
-		right: -6px;
-		width: 20px;
-		height: 20px;
-		border-radius: 50%;
-		background: var(--color-panel);
-		border: 1px solid var(--card-border);
-		color: var(--color-muted);
-		cursor: pointer;
-		font-size: 13px;
-		line-height: 1;
-	}
-
-	.comp-remove:hover { color: var(--color-red); }
-
-	.comp-empty {
+	.comp-picker {
 		position: relative;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		min-height: 64px;
-		padding: 12px;
 	}
 
 	.comp-add {
+		width: 100%;
 		background: none;
 		border: 1px dashed var(--card-border);
 		border-radius: var(--radius-sm);
@@ -93,7 +62,15 @@
 		font-family: var(--font-sans);
 	}
 
-	.comp-add:hover { color: var(--color-text); border-color: var(--color-border-md); }
+	.comp-add:hover:not(:disabled) {
+		color: var(--color-text);
+		border-color: var(--color-border-md);
+	}
+
+	.comp-add:disabled {
+		opacity: 0.5;
+		cursor: default;
+	}
 
 	.comp-menu {
 		position: absolute;
