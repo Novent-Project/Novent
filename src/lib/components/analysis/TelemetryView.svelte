@@ -48,6 +48,8 @@
 					candidates={analysis.compCandidates}
 					onPick={(lap) => analysis.addCompLap(lap)}
 					onRemove={() => analysis.removeComp()}
+					showGhost={analysis.showGhost}
+					onToggleGhost={() => analysis.toggleGhost()}
 				/>
 			</div>
 		</div>

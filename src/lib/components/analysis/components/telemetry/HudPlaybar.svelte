@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { formatTime } from '$lib/utils';
+	import Icon from '$lib/components/chrome/Icon.svelte';
+	import { Play, Pause, ArrowsRightLeft } from '@steeze-ui/heroicons';
 	import type { AnalysisState } from '$lib/components/analysis/state';
 
 	interface Props {
@@ -8,12 +10,73 @@
 
 	let { analysis }: Props = $props();
 
+	let playbarEl = $state<HTMLDivElement | null>(null);
+	let pbW = $state(0);
+	let pbH = $state(0);
+	let radius = $state(0);
+
+	// hud-card's border-radius isn't defined in this file, so read the real
+	// computed value rather than guessing a px number that might drift out
+	// of sync with the shared card style.
+	$effect(() => {
+		if (!playbarEl) return;
+		const r = parseFloat(getComputedStyle(playbarEl).borderRadius);
+		if (!Number.isNaN(r)) radius = r;
+	});
+
+	// Inset stroke by half its width so it sits crisply inside the card edge
+	// rather than getting clipped by the card's own rounded corners.
+	const STROKE = 2.25;
+	let inset = $derived(STROKE / 2);
+	let rectW = $derived(Math.max(pbW - STROKE, 0));
+	let rectH = $derived(Math.max(pbH - STROKE, 0));
+	let rectR = $derived(Math.max(radius - inset, 0));
+
+	// Explicit "top cap" path — left corner arc, top straight, right corner
+	// arc — rather than relying on where a plain <rect>'s path happens to
+	// start/stop. This guarantees the progress stroke always ends mid-curve
+	// cleanly instead of cutting off flat partway down a straight edge.
+	let topPathD = $derived(
+		rectW && rectH
+			? `M ${inset},${inset + rectR} A ${rectR},${rectR} 0 0 1 ${inset + rectR},${inset} L ${inset + rectW - rectR},${inset} A ${rectR},${rectR} 0 0 1 ${inset + rectW},${inset + rectR}`
+			: ''
+	);
+
 	let pct = $derived(analysis.resolvedLapTime > 0 ? (analysis.currentTime / analysis.resolvedLapTime) * 100 : 0);
+	let pctClamped = $derived(Math.min(Math.max(pct, 0), 100));
+
+	// Read the thumb's position straight off the path geometry (getPointAtLength)
+	// instead of re-deriving corner trig by hand, so it's always pixel-exact
+	// wherever the dash actually ends.
+	let topPathEl = $state<SVGPathElement | null>(null);
+	let thumb = $state({ x: 0, y: 0 });
+	$effect(() => {
+		if (!topPathEl) return;
+		const len = topPathEl.getTotalLength();
+		if (!len) return;
+		const p = topPathEl.getPointAtLength(len * (pctClamped / 100));
+		thumb = { x: p.x, y: p.y };
+	});
+
 	let deltaText = $derived(`${analysis.liveDeltaValue >= 0 ? '+' : ''}${analysis.liveDeltaValue.toFixed(3)}`);
 	let distanceText = $derived(`${analysis.distanceGap >= 0 ? '+' : ''}${Math.round(analysis.distanceGap)} m`);
 </script>
 
-<div class="playbar">
+<div class="hud-card playbar" bind:this={playbarEl} bind:clientWidth={pbW} bind:clientHeight={pbH}>
+	{#if pbW && pbH}
+		<svg class="frame" viewBox="0 0 {pbW} {pbH}" aria-hidden="true">
+			<rect class="frame-track" x={inset} y={inset} width={rectW} height={rectH} rx={rectR} ry={rectR} />
+			<path
+				bind:this={topPathEl}
+				class="frame-progress"
+				d={topPathD}
+				pathLength="100"
+				style="stroke-dasharray:{pctClamped} 9999; opacity:{pctClamped > 0.05 ? 1 : 0}"
+			/>
+			<circle class="frame-thumb" cx={thumb.x} cy={thumb.y} r="3" />
+		</svg>
+	{/if}
+
 	<input
 		class="scrubber"
 		type="range"
@@ -21,22 +84,13 @@
 		max={analysis.resolvedLapTime}
 		step="0.01"
 		value={analysis.currentTime}
-		style="--pct:{pct}%"
+		aria-label="Seek"
 		oninput={(e) => analysis.seek(+(e.currentTarget as HTMLInputElement).value)}
 	/>
 
 	<div class="cluster left">
 		<button class="play" onclick={() => analysis.togglePlayback()} aria-label={analysis.isPlaying ? 'Pause' : 'Play'}>
-			{#if analysis.isPlaying}
-				<svg viewBox="0 0 16 16" fill="currentColor">
-					<rect x="4" y="3" width="3" height="10" rx="1" />
-					<rect x="9" y="3" width="3" height="10" rx="1" />
-				</svg>
-			{:else}
-				<svg viewBox="0 0 16 16" fill="currentColor">
-					<path d="M5 3.5v9l7-4.5-7-4.5z" />
-				</svg>
-			{/if}
+			<Icon src={analysis.isPlaying ? Pause : Play} theme="solid" size={16} />
 		</button>
 
 		<button class="icon-btn" onclick={() => analysis.seek(analysis.currentTime - 1)} aria-label="Step back">
@@ -64,33 +118,12 @@
 			>
 		</span>
 		<span class="stat">
-			<svg
-				class="dist-icon"
-				viewBox="0 0 16 16"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="1.5"
-			>
-				<path d="M4 5L2 8l2 3" stroke-linecap="round" stroke-linejoin="round" />
-				<path d="M12 5l2 3-2 3" stroke-linecap="round" stroke-linejoin="round" />
-				<path d="M2 8h12" stroke-linecap="round" />
-			</svg>
+			<Icon src={ArrowsRightLeft} theme="outline" size={16} color="var(--color-muted)" />
 			<span class="mono dist">{distanceText}</span>
 		</span>
 	</div>
 
 	<div class="cluster right">
-		<button
-			class="toggle"
-			class:on={analysis.showGhost}
-			onclick={() => analysis.toggleGhost()}
-			role="switch"
-			aria-checked={analysis.showGhost}
-			aria-label="Toggle ghost"
-		>
-			<span class="knob"></span>
-		</button>
-
 		<div class="segment">
 			<button class:active={analysis.playMode === 'time'} onclick={() => analysis.setPlayMode('time')}>Time</button>
 			<button class:active={analysis.playMode === 'distance'} onclick={() => analysis.setPlayMode('distance')}>Distance</button>
@@ -104,53 +137,88 @@
 		display: flex;
 		align-items: center;
 		height: 56px;
+		margin: 12px 14px 14px;
 		padding: 0 18px;
-		width: 100%;
-		background: var(--color-surface);
-		border-top: 1px solid var(--color-border);
 	}
 
+	.frame {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		pointer-events: none;
+		overflow: visible;
+	}
+
+	.frame-track {
+		fill: none;
+		stroke: var(--color-border-md);
+		stroke-width: 1.25;
+		opacity: 0.55;
+	}
+
+	.frame-progress {
+		fill: none;
+		stroke: var(--color-accent);
+		stroke-width: 2.75;
+		stroke-linecap: round;
+		filter: drop-shadow(0 0 3px color-mix(in srgb, var(--color-accent) 55%, transparent));
+	}
+
+	.frame-thumb {
+		fill: var(--color-accent);
+		filter: drop-shadow(0 0 3px color-mix(in srgb, var(--color-accent) 70%, transparent));
+		opacity: 0;
+		transition: opacity 0.15s ease;
+	}
+
+	.playbar:hover .frame-thumb,
+	.playbar:focus-within .frame-thumb {
+		opacity: 1;
+	}
+
+	/* Purely a drag surface for the top edge — all visuals come from .frame.
+	   Sits below the clusters in stacking order so it never steals clicks
+	   from the buttons where the hit-zone happens to overlap them. */
 	.scrubber {
 		position: absolute;
 		top: 0;
 		left: 0;
 		width: 100%;
-		height: 3px;
+		height: 20px;
 		margin: 0;
 		padding: 0;
 		appearance: none;
 		-webkit-appearance: none;
-		background: linear-gradient(
-			to right,
-			var(--color-accent) 0%,
-			var(--color-accent) var(--pct),
-			var(--color-border-md) var(--pct),
-			var(--color-border-md) 100%
-		);
+		background: transparent;
 		cursor: pointer;
 		outline: none;
+		z-index: 1;
 	}
 
 	.scrubber::-webkit-slider-thumb {
 		-webkit-appearance: none;
 		appearance: none;
-		width: 10px;
-		height: 10px;
-		border-radius: 50%;
-		background: var(--color-accent);
+		width: 20px;
+		height: 20px;
+		background: transparent;
 		border: none;
-		margin-top: -1px;
 	}
 
 	.scrubber::-moz-range-thumb {
-		width: 10px;
-		height: 10px;
-		border-radius: 50%;
-		background: var(--color-accent);
+		width: 20px;
+		height: 20px;
+		background: transparent;
 		border: none;
 	}
 
+	.scrubber::-moz-range-track {
+		background: transparent;
+	}
+
 	.cluster {
+		position: relative;
+		z-index: 2;
 		display: flex;
 		align-items: center;
 	}
@@ -181,11 +249,6 @@
 		color: var(--color-bg);
 		cursor: pointer;
 		padding: 0;
-	}
-
-	.play svg {
-		width: 16px;
-		height: 16px;
 	}
 
 	.icon-btn {
@@ -235,44 +298,6 @@
 
 	.dist {
 		color: var(--color-muted);
-	}
-
-	.dist-icon {
-		width: 16px;
-		height: 16px;
-		color: var(--color-muted);
-	}
-
-	.toggle {
-		position: relative;
-		width: 34px;
-		height: 18px;
-		border-radius: var(--radius-pill);
-		border: none;
-		background: var(--card-bg);
-		cursor: pointer;
-		padding: 0;
-		transition: background 0.15s ease;
-	}
-
-	.toggle.on {
-		background: var(--color-accent);
-	}
-
-	.knob {
-		position: absolute;
-		top: 2px;
-		left: 2px;
-		width: 14px;
-		height: 14px;
-		border-radius: 50%;
-		background: var(--color-text);
-		transition: transform 0.15s ease;
-	}
-
-	.toggle.on .knob {
-		transform: translateX(16px);
-		background: var(--color-bg);
 	}
 
 	.segment {

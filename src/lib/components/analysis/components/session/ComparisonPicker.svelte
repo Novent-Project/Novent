@@ -1,6 +1,6 @@
 <script lang="ts">
 	import TelemetryWidget from '$lib/components/analysis/components/telemetry/TelemetryWidget.svelte';
-	import { formatName } from '$lib/utils';
+	import { formatName, formatDateTime } from '$lib/utils';
 	import type { Lap } from '$lib/api';
 	import type { DriverTelemetry } from '$lib/components/analysis/state';
 
@@ -9,9 +9,13 @@
 		candidates: Lap[];
 		onPick:     (lap: Lap) => void;
 		onRemove:   () => void;
+		/** Ghost-overlay visibility for this comparison driver, and the toggle for it â€”
+		 *  passed straight through to TelemetryWidget's avatar click target. */
+		showGhost?:     boolean;
+		onToggleGhost?: () => void;
 	}
 
-	let { driver, candidates, onPick, onRemove }: Props = $props();
+	let { driver, candidates, onPick, onRemove, showGhost, onToggleGhost }: Props = $props();
 
 	let menuOpen = $state(false);
 
@@ -23,7 +27,7 @@
 
 {#if driver}
 	<div class="comp-slot">
-		<TelemetryWidget {driver} />
+		<TelemetryWidget {driver} ghostVisible={showGhost} {onToggleGhost} />
 		<button class="comp-remove" onclick={onRemove} aria-label="Remove comparison">×</button>
 	</div>
 {:else}
@@ -35,7 +39,10 @@
 			<div class="comp-menu hud-card">
 				{#each candidates as l (l.uuid)}
 					<button class="comp-opt" onclick={() => pick(l)}>
-						<span>{formatName(l.car)}</span>
+						<span class="comp-opt-info">
+							<span class="comp-opt-car">{formatName(l.car)}</span>
+							<span class="comp-opt-date mono">{formatDateTime(l.date_time)}</span>
+						</span>
 						<span class="mono">{l.lap_time || l.time}</span>
 					</button>
 				{:else}
@@ -119,6 +126,24 @@
 
 	.comp-opt:hover { background: var(--card-bg-hover); }
 	.comp-opt .mono { color: var(--color-muted); font-size: 11px; }
+
+	.comp-opt-info {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		min-width: 0;
+	}
+
+	.comp-opt-car {
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.comp-opt-date {
+		font-size: 10px;
+		color: var(--color-subtle);
+	}
 
 	.comp-none {
 		padding: 10px;

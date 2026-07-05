@@ -20,7 +20,8 @@
 			canvas, width, height,
 			analysis.currentTrace, analysis.dsTrace,
 			map.scale, map.offsetX, map.offsetY,
-			analysis.playbackIdx, analysis.boundaries, analysis.compLaps,
+			analysis.playbackIdx, analysis.boundaries,
+			analysis.showGhost ? analysis.compLaps : [],
 			map.boundaryFix,
 		);
 	});

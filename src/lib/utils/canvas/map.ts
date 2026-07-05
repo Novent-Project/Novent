@@ -234,11 +234,33 @@ export function drawMap(
 	}
 
 	for (const comp of compLaps) {
+		const ctrace = comp.trace;
+		const ctotal = ctrace.worldX.length;
+		if (ctotal) {
+			const cLineStep = Math.max(1, Math.floor(ctotal / (Math.max(diagLen, 1) * 2)));
+			ctx.beginPath();
+			ctx.strokeStyle = comp.color;
+			ctx.globalAlpha = 0.55;
+			ctx.lineWidth   = 2;
+			ctx.lineCap     = 'round';
+			ctx.lineJoin    = 'round';
+			let first = true;
+			for (let i = 0; i < ctotal; i += cLineStep) {
+				const wx = ctrace.worldX[i], wz = ctrace.worldZ[i];
+				if (isGarbage(wx, wz)) continue;
+				const { sx, sz } = toScreen(wx, wz);
+				first ? ctx.moveTo(sx, sz) : ctx.lineTo(sx, sz);
+				first = false;
+			}
+			ctx.stroke();
+			ctx.globalAlpha = 1;
+		}
+
 		const t          = trace.time[idx] ?? 0;
-		const compRawIdx = comp.trace.time.findIndex(pt => pt >= t);
-		const ci         = compRawIdx === -1 ? comp.trace.time.length - 1 : compRawIdx;
-		const wx         = comp.trace.worldX[ci];
-		const wz         = comp.trace.worldZ[ci];
+		const compRawIdx = ctrace.time.findIndex(pt => pt >= t);
+		const ci         = compRawIdx === -1 ? ctrace.time.length - 1 : compRawIdx;
+		const wx         = ctrace.worldX[ci];
+		const wz         = ctrace.worldZ[ci];
 		if (!isGarbage(wx, wz)) {
 			const { sx, sz } = toScreen(wx, wz);
 			ctx.beginPath();

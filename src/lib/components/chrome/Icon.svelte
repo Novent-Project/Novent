@@ -1,5 +1,5 @@
 <script lang="ts" module>
-	export type CustomIconName = 'wheel' | 'pedals' | 'shifter' | 'controller' | 'car' | 'close' | 'plus';
+	export type CustomIconName = 'wheel' | 'pedals' | 'shifter' | 'controller' | 'car';
 </script>
 
 <script lang="ts">
@@ -89,10 +89,6 @@
 			<path d="M6 6L4.5 3H2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
 			<circle cx="9.5" cy="19" r="1.4" fill="currentColor" stroke="none" />
 			<circle cx="17.5" cy="19" r="1.4" fill="currentColor" stroke="none" />
-		{:else if name === 'close'}
-			<path d="M6 6 L18 18 M18 6 L6 18" stroke-linecap="round" vector-effect="non-scaling-stroke" />
-		{:else if name === 'plus'}
-			<path d="M12 5.25 L12 18.75 M5.25 12 L18.75 12" stroke-linecap="round" vector-effect="non-scaling-stroke" />
 		{/if}
 	</svg>
 {/if}
