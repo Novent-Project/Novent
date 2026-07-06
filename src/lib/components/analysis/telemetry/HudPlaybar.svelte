@@ -3,7 +3,7 @@
 	import { buildChartLine, symmetricRange } from '$lib/utils/chart';
 	import Icon from '$lib/components/chrome/Icon.svelte';
 	import { Play, Pause, ArrowsRightLeft } from '@steeze-ui/heroicons';
-	import PlaybarChart from '$lib/components/analysis/components/telemetry/PlaybarChart.svelte';
+	import PlaybarChart from '$lib/components/analysis/telemetry/PlaybarChart.svelte';
 	import type { AnalysisState } from '$lib/components/analysis/state';
 
 	interface Props {

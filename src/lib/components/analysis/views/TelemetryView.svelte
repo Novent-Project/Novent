@@ -1,13 +1,13 @@
 <script lang="ts">
-	import TrackMap from '$lib/components/analysis/components/map/TrackMap.svelte';
-	import SessionHeaderCard from '$lib/components/analysis/components/session/SessionHeaderCard.svelte';
-	import StandingsCard from '$lib/components/analysis/components/results/StandingsCard.svelte';
-	import TelemetryWidget from '$lib/components/analysis/components/telemetry/TelemetryWidget.svelte';
-	import SegmentMap from '$lib/components/analysis/components/map/SegmentMap.svelte';
-	import SectorComparison from '$lib/components/analysis/components/results/SectorComparison.svelte';
-	import ZoomControl from '$lib/components/analysis/components/map/ZoomControl.svelte';
-	import HudPlaybar from '$lib/components/analysis/components/telemetry/HudPlaybar.svelte';
-	import GraphSidebar from '$lib/components/analysis/components/telemetry/GraphSidebar.svelte';
+	import TrackMap from '$lib/components/analysis/map/TrackMap.svelte';
+	import SessionHeaderCard from '$lib/components/analysis/session/SessionHeaderCard.svelte';
+	import StandingsCard from '$lib/components/analysis/results/StandingsCard.svelte';
+	import TelemetryWidget from '$lib/components/analysis/telemetry/TelemetryWidget.svelte';
+	import SegmentMap from '$lib/components/analysis/map/SegmentMap.svelte';
+	import SectorComparison from '$lib/components/analysis/results/SectorComparison.svelte';
+	import ZoomControl from '$lib/components/analysis/map/ZoomControl.svelte';
+	import HudPlaybar from '$lib/components/analysis/telemetry/HudPlaybar.svelte';
+	import GraphSidebar from '$lib/components/analysis/telemetry/GraphSidebar.svelte';
 	import { ZOOM_UI_MIN, ZOOM_UI_MAX, MAX_COMP_LAPS, type AnalysisState, type MapView, type UiState } from '$lib/components/analysis/state';
 
 	interface Props {

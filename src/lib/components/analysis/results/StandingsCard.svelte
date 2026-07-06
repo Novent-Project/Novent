@@ -1,5 +1,5 @@
 <script lang="ts">
-	import ComparisonPicker from '$lib/components/analysis/components/session/ComparisonPicker.svelte';
+	import ComparisonPicker from '$lib/components/analysis/session/ComparisonPicker.svelte';
 	import type { Lap } from '$lib/api';
 
 	interface Entry {

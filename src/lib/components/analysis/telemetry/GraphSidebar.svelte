@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { formatTime, traceIndexAtTime } from '$lib/utils';
 	import { buildChartLine, symmetricRange } from '$lib/utils/chart';
-	import PlaybarChart from '$lib/components/analysis/components/telemetry/PlaybarChart.svelte';
+	import PlaybarChart from '$lib/components/analysis/telemetry/PlaybarChart.svelte';
 	import type { AnalysisState } from '$lib/components/analysis/state';
 
 	interface Props {
