@@ -77,7 +77,8 @@
 
 	.grid {
 		display: grid;
-		grid-template-columns: repeat(4, 1fr);
+		
+		grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
 		gap: 10px;
 	}
 
@@ -86,6 +87,7 @@
 		flex-direction: column;
 		align-items: center;
 		gap: 8px;
+		min-width: 0;
 	}
 
 	.orb {
@@ -112,6 +114,10 @@
 		font-size: 11px;
 		color: var(--color-muted);
 		transition: color 0.2s ease;
+		max-width: 100%;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
 	.item.connected .label {
