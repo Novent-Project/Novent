@@ -21,7 +21,8 @@ interface PersistedTabs {
 
 function loadPersisted(): PersistedTabs {
 	try {
-		const raw = localStorage.getItem(STORAGE_KEY);
+		localStorage.removeItem(STORAGE_KEY); // stale key from when tabs persisted across app restarts
+		const raw = sessionStorage.getItem(STORAGE_KEY);
 		if (!raw) return { openIds: [], activeId: null };
 		const parsed = JSON.parse(raw);
 		if (!Array.isArray(parsed.openIds)) return { openIds: [], activeId: null };
@@ -37,10 +38,11 @@ function loadPersisted(): PersistedTabs {
  * and MapView so switching tabs doesn't discard playback position, comparison
  * lap, or pan/zoom for the tab you're leaving.
  *
- * Open tab ids + the active tab are mirrored to localStorage so a refresh
- * restores the same tabs. Restoring re-fetches telemetry for each tab (it
- * isn't itself cached), so `restore()` is async and tabs report `loading`
- * until their fetch resolves.
+ * Open tab ids + the active tab are mirrored to sessionStorage: leaving for
+ * another route (dashboard) and coming back restores the same tabs, but a
+ * fresh app launch starts clean at the session selector. Restoring re-fetches
+ * telemetry for each tab (it isn't itself cached), so `restore()` is async
+ * and tabs report `loading` until their fetch resolves.
  */
 export class TabsState {
 	tabs     = $state<SessionTab[]>([]);
@@ -136,7 +138,7 @@ export class TabsState {
 
 	#persist() {
 		try {
-			localStorage.setItem(STORAGE_KEY, JSON.stringify({
+			sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
 				openIds:  this.tabs.map(t => t.id),
 				activeId: this.activeId,
 			}));

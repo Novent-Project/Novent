@@ -81,6 +81,14 @@ export function calibrateBoundary(trace: Trace, boundaries: TrackBoundaries | nu
 	const traceCx = (minX + maxX) / 2, traceCz = (minZ + maxZ) / 2;
 	const boundCx = (bMinX + bMaxX) / 2, boundCz = (bMinZ + bMaxZ) / 2;
 
+	// Boundaries that already agree with the trace's world space (the
+	// backend's map.ini reconstruction emits true world coordinates) must be
+	// drawn as-is: bbox-fitting them onto the racing line would shrink the
+	// ribbon, because track edges legitimately extend beyond the driven line.
+	// Only fit sources that clearly live in a different coordinate space.
+	const centerDist = Math.hypot(boundCx - traceCx, boundCz - traceCz);
+	if (scale > 0.7 && scale < 1.3 && centerDist < traceDiag * 0.1) return null;
+
 	return {
 		scale,
 		dx: traceCx - boundCx * scale,
