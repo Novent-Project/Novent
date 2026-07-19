@@ -8,15 +8,12 @@
 
 	interface Props {
 		analysis: AnalysisState;
-		/** Which of the two graph-view experiments is active — the inline
-		 *  panel below (existing behavior) or the docked GraphSidebar.
-		 *  Lives in the parent (TelemetryView) so this button and the
-		 *  sidebar it shows/hides stay in sync. */
-		graphMode?: 'playbar' | 'sidebar';
-		onToggleGraphMode?: () => void;
+		graphsOpen?: boolean;
+		placement?: 'bottom' | 'side';
+		onToggleGraphs?: () => void;
 	}
 
-	let { analysis, graphMode = 'playbar', onToggleGraphMode }: Props = $props();
+	let { analysis, graphsOpen = false, placement = 'bottom', onToggleGraphs }: Props = $props();
 
 	let playbarEl = $state<HTMLDivElement | null>(null);
 	let pbW = $state(0);
@@ -53,6 +50,12 @@
 	let pct = $derived(analysis.resolvedLapTime > 0 ? (analysis.currentTime / analysis.resolvedLapTime) * 100 : 0);
 	let pctClamped = $derived(Math.min(Math.max(pct, 0), 100));
 
+	let progressPct = $derived(
+		analysis.playMode === 'distance'
+			? Math.min(Math.max(analysis.currentNorm * 100, 0), 100)
+			: pctClamped
+	);
+
 	// Read the thumb's position straight off the path geometry (getPointAtLength)
 	// instead of re-deriving corner trig by hand, so it's always pixel-exact
 	// wherever the dash actually ends.
@@ -67,7 +70,7 @@
 	});
 	$effect(() => {
 		if (!topPathEl || !topPathLen) return;
-		const p = topPathEl.getPointAtLength(topPathLen * (pctClamped / 100));
+		const p = topPathEl.getPointAtLength(topPathLen * (progressPct / 100));
 		thumb = { x: p.x, y: p.y };
 	});
 
@@ -77,14 +80,7 @@
 	// ---------- expanded telemetry graphs ----------
 	const ROW_H = 40;
 
-	let expanded = $state(false);
-
-	// The inline panel and the sidebar both show the same graphs — no
-	// reason to keep this one expanded (and its zoom/hover listeners live)
-	// once the sidebar has taken over.
-	$effect(() => {
-		if (graphMode === 'sidebar') expanded = false;
-	});
+	let expanded = $derived(graphsOpen && placement === 'bottom');
 
 	let chartTrackEl = $state<HTMLDivElement | null>(null);
 	let chartW = $state(0);
@@ -165,7 +161,6 @@
 		for (let t = tickStep; t < analysis.resolvedLapTime; t += tickStep) out.push(t);
 		return out;
 	});
-
 
 	function seekFromClientX(clientX: number) {
 		if (!chartTrackEl || analysis.resolvedLapTime <= 0 || chartW <= 0) return;
@@ -326,6 +321,7 @@
 			return;
 		}
 		scrubbing = true;
+		analysis.beginScrub();
 		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
 		seekFromClientX(e.clientX);
 	}
@@ -343,6 +339,7 @@
 	}
 
 	function onGridPointerUp(e: PointerEvent) {
+		if (scrubbing) analysis.endScrub();
 		scrubbing = false;
 		panning = false;
 		(e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
@@ -358,7 +355,7 @@
 				class="frame-progress"
 				d={topPathD}
 				pathLength="100"
-				style="stroke-dasharray:{pctClamped} 9999; opacity:{pctClamped > 0.05 ? 1 : 0}"
+				style="stroke-dasharray:{progressPct} 9999; opacity:{progressPct > 0.05 ? 1 : 0}"
 			/>
 			<circle class="frame-thumb" cx={thumb.x} cy={thumb.y} r="3" />
 		</svg>
@@ -368,11 +365,18 @@
 		class="scrubber"
 		type="range"
 		min="0"
-		max={analysis.resolvedLapTime}
-		step="0.01"
-		value={analysis.currentTime}
+		max={analysis.playMode === 'time' ? analysis.resolvedLapTime : 1}
+		step={analysis.playMode === 'time' ? 0.01 : 0.0005}
+		value={analysis.playMode === 'time' ? analysis.currentTime : analysis.currentNorm}
 		aria-label="Seek"
-		oninput={(e) => analysis.seek(+(e.currentTarget as HTMLInputElement).value)}
+		onpointerdown={() => analysis.beginScrub()}
+		onpointerup={() => analysis.endScrub()}
+		onpointercancel={() => analysis.endScrub()}
+		oninput={(e) => {
+			const v = +(e.currentTarget as HTMLInputElement).value;
+			if (analysis.playMode === 'time') analysis.seek(v);
+			else analysis.seekNorm(v);
+		}}
 	/>
 
 	<div class="bar-row">
@@ -417,53 +421,36 @@
 				<button class:active={analysis.playMode === 'distance'} onclick={() => analysis.setPlayMode('distance')}>Distance</button>
 			</div>
 
-			{#if graphMode === 'playbar'}
-				<button
-					class="icon-btn"
-					onclick={() => (expanded = !expanded)}
-					aria-expanded={expanded}
-					aria-label={expanded ? 'Collapse telemetry graphs' : 'Expand telemetry graphs'}
-				>
-					{#if expanded}
-						<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-							<path
-								d="M6 2v3a1 1 0 0 1-1 1H2M10 2v3a1 1 0 0 0 1 1h3M6 14v-3a1 1 0 0 0-1-1H2M10 14v-3a1 1 0 0 1 1-1h3"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-							/>
-						</svg>
-					{:else}
-						<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-							<path
-								d="M2 6V3a1 1 0 0 1 1-1h3M11 2h3a1 1 0 0 1 1 1v3M14 10v3a1 1 0 0 1-1 1h-3M5 14H2a1 1 0 0 1-1-1v-3"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-							/>
-						</svg>
-					{/if}
-				</button>
-			{/if}
-
-			<!-- Two-modes toggle: inline panel above vs. the docked
-			     GraphSidebar rendered by TelemetryView. Just a UI-mode
-			     switch for now — both read the same analysis state. -->
 			<button
 				class="icon-btn"
-				class:active={graphMode === 'sidebar'}
-				onclick={onToggleGraphMode}
-				aria-pressed={graphMode === 'sidebar'}
-				aria-label={graphMode === 'sidebar' ? 'Switch to inline graphs' : 'Switch to graph sidebar'}
-				title={graphMode === 'sidebar' ? 'Switch to inline graphs' : 'Switch to graph sidebar'}
+				class:active={graphsOpen}
+				onclick={onToggleGraphs}
+				aria-expanded={graphsOpen}
+				aria-label={graphsOpen ? 'Hide telemetry graphs' : 'Show telemetry graphs'}
+				title={graphsOpen ? 'Hide telemetry graphs' : 'Show telemetry graphs'}
 			>
-				<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-					<rect x="1.5" y="2.5" width="13" height="11" rx="1.5" />
-					<path d="M9.75 2.5v11" />
-				</svg>
+				{#if graphsOpen}
+					<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+						<path
+							d="M6 2v3a1 1 0 0 1-1 1H2M10 2v3a1 1 0 0 0 1 1h3M6 14v-3a1 1 0 0 0-1-1H2M10 14v-3a1 1 0 0 1 1-1h3"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						/>
+					</svg>
+				{:else}
+					<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+						<path
+							d="M2 6V3a1 1 0 0 1 1-1h3M11 2h3a1 1 0 0 1 1 1v3M14 10v3a1 1 0 0 1-1 1h-3M5 14H2a1 1 0 0 1-1-1v-3"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						/>
+					</svg>
+				{/if}
 			</button>
 		</div>
 	</div>
 
-	{#if graphMode === 'playbar'}
+	{#if placement === 'bottom'}
 	<div class="chart-panel" class:open={expanded}>
 		<div class="chart-panel-inner">
 			<div class="chart-panel-header">
@@ -587,7 +574,7 @@
 	{/if}
 
 	{#if hoverChannel && hoverTime !== null && hoverPrimaryValue !== null}
-		<div class="hover-tooltip" style="left:{hoverPos.x}px; top:{hoverPos.y}px">
+		<div class="hover-tooltip" class:flip={hoverPos.x > pbW - 200} style="left:{hoverPos.x}px; top:{hoverPos.y}px">
 			<div class="hover-header">
 				<span class="hover-title">{CHANNEL_LABEL[hoverChannel]} at</span>
 				<span class="hover-time mono">{formatTime(hoverTime)}</span>
@@ -955,6 +942,10 @@
 		box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.5);
 		pointer-events: none;
 		white-space: nowrap;
+	}
+
+	.hover-tooltip.flip {
+		transform: translate(calc(-100% - 14px), -110%);
 	}
 
 	.hover-header {

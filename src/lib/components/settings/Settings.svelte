@@ -6,10 +6,11 @@
 		gamePaths: Record<string, string>;
 		appZoom:   number;
 		traceZoom: number;
+		graphPlacement: 'bottom' | 'side';
 		onClose:   () => void;
 	}
 
-	let { gamePaths = $bindable(), appZoom = $bindable(), traceZoom = $bindable(), onClose }: Props = $props();
+	let { gamePaths = $bindable(), appZoom = $bindable(), traceZoom = $bindable(), graphPlacement = $bindable(), onClose }: Props = $props();
 
 	const NAV = [
 		{ id: 'game',    label: 'Game Detection' },
@@ -62,7 +63,7 @@
 				{#if activeSection === 'game'}
 					<GameDetectionSection bind:gamePaths />
 				{:else if activeSection === 'display'}
-					<DisplaySection bind:appZoom bind:traceZoom />
+					<DisplaySection bind:appZoom bind:traceZoom bind:graphPlacement />
 				{/if}
 			</div>
 		</div>

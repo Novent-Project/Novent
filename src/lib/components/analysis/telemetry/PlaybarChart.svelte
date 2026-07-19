@@ -25,6 +25,7 @@
 		/** Identifies this row for the parent's per-row hover tooltip (see
 		 *  data-channel below) — purely a hook for HudPlaybar, unused here. */
 		channel?: string;
+		midline?: boolean;
 	}
 
 	let {
@@ -38,7 +39,8 @@
 		compLines = [],
 		zoom = 1,
 		panX = 0,
-		channel = undefined
+		channel = undefined,
+		midline = false
 	}: Props = $props();
 
 	// All plotted content lives in one local coordinate space, 0..width,
@@ -61,6 +63,7 @@
 <div class="grid-track" style="height:{height}px" data-channel={channel}>
 	{#if width > 0}
 		<svg viewBox="0 0 {width} {height}" preserveAspectRatio="none">
+			{#if midline}<line class="midline" x1="0" x2={width} y1={height / 2} y2={height / 2} />{/if}
 			<g transform={contentTransform}>
 				{#if area}<path d={area} class="area" style="fill:{color}" />{/if}
 				{#each compLines as c (c.color)}
@@ -128,5 +131,11 @@
 	.line.comp {
 		stroke-width: 1.5;
 		opacity: 0.85;
+	}
+
+	.midline {
+		stroke: var(--color-border-md);
+		stroke-width: 1;
+		stroke-dasharray: 4 4;
 	}
 </style>

@@ -11,6 +11,7 @@ export interface Sample {
 
 export const EMPTY_TRACE: Trace = {
 	gas: [], brake: [], steer: [], normPos: [], worldX: [], worldZ: [], time: [], speed: [], gear: [], rpm: [],
+	accLat: [], accLon: [],
 };
 
 export function gearLabel(g: number): string {
@@ -51,6 +52,8 @@ export function trimTrace(t: Trace): Trace {
 		speed:   t.speed.slice(0, end),
 		gear:    t.gear.slice(0, end),
 		rpm:     t.rpm.slice(0, end),
+		accLat:  t.accLat.slice(0, end),
+		accLon:  t.accLon.slice(0, end),
 	};
 }
 
@@ -66,6 +69,8 @@ export function makeTrace(d: Telemetry): Trace {
 		speed:   d.speedKmh              ?? [],
 		gear:    d.gear                  ?? [],
 		rpm:     d.rpms                  ?? [],
+		accLat:  d.accLat                ?? [],
+		accLon:  d.accLon                ?? [],
 	});
 }
 

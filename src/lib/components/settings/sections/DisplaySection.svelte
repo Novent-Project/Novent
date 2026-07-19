@@ -4,9 +4,10 @@
 	interface Props {
 		appZoom:   number;
 		traceZoom: number;
+		graphPlacement: 'bottom' | 'side';
 	}
 
-	let { appZoom = $bindable(), traceZoom = $bindable() }: Props = $props();
+	let { appZoom = $bindable(), traceZoom = $bindable(), graphPlacement = $bindable() }: Props = $props();
 
 	const TRACE_ZOOM_MIN     = 0.5;
 	const TRACE_ZOOM_MAX     = 4;
@@ -49,6 +50,17 @@
 			<span>{traceZoom.toFixed(2)}×</span>
 			<button onclick={() => adjustTraceZoom(TRACE_ZOOM_STEP)}>+</button>
 			<button class="reset-btn" onclick={() => traceZoom = TRACE_ZOOM_DEFAULT}>Reset</button>
+		</div>
+	</div>
+
+	<div class="zoom-row">
+		<div class="zoom-label">
+			<span>Telemetry graphs</span>
+			<span class="zoom-pct">Where the playbar's graph button opens them</span>
+		</div>
+		<div class="zoom-controls">
+			<button class="seg-btn" class:active={graphPlacement === 'bottom'} onclick={() => graphPlacement = 'bottom'}>Bottom</button>
+			<button class="seg-btn" class:active={graphPlacement === 'side'} onclick={() => graphPlacement = 'side'}>Side</button>
 		</div>
 	</div>
 </section>
@@ -154,5 +166,16 @@
 		font-family: var(--font-mono);
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
+	}
+
+	.seg-btn {
+		width: auto !important;
+		padding: 0 12px !important;
+		font-size: 11px !important;
+	}
+
+	.seg-btn.active {
+		color: #fff !important;
+		background: rgba(255,255,255,0.08) !important;
 	}
 </style>

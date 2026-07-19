@@ -46,6 +46,8 @@ export interface Telemetry {
 	speedKmh:              number[];
 	gear:                  number[];
 	rpms:                  number[];
+	accLat:                number[];
+	accLon:                number[];
 }
 
 export interface TrackBoundaries {

@@ -99,7 +99,7 @@ export class AnalysisState {
 	playbackSpeed = $state(1);
 	currentTime   = $state(0);
 	playbackIdx   = $state(0);
-	playMode      = $state<PlayMode>('distance');
+	playMode      = $state<PlayMode>('time');
 
 	#exactIdx = 0;
 	#rafId    = 0;
@@ -110,6 +110,7 @@ export class AnalysisState {
 	 *  depends on it (a stale hint just means a binary-search fallback). */
 	#compIdxHints = new Map<string, number>();
 	#resumeOnActivate = false;
+	#resumeAfterScrub = false;
 
 	constructor(private readonly data: DataState) {}
 
@@ -313,6 +314,39 @@ export class AnalysisState {
 		this.playbackIdx = Math.max(0, idx);
 		this.#exactIdx   = this.playbackIdx;
 		this.currentTime = this.currentTrace.time[this.playbackIdx] ?? 0;
+	}
+
+	seekNorm(f: number) {
+		const norm = this.currentTrace.normPos;
+		if (!norm.length) return;
+		const target = Math.max(0, Math.min(1, f));
+		let lo = 0, hi = norm.length - 1;
+		while (lo < hi) {
+			const mid = (lo + hi) >> 1;
+			if ((norm[mid] ?? 0) >= target) hi = mid;
+			else lo = mid + 1;
+		}
+		this.playbackIdx = lo;
+		this.#exactIdx   = lo;
+		this.currentTime = this.currentTrace.time[lo] ?? 0;
+	}
+
+	get currentNorm(): number {
+		return this.currentTrace.normPos[this.playbackIdx] ?? 0;
+	}
+
+	beginScrub() {
+		if (this.isPlaying) {
+			this.#resumeAfterScrub = true;
+			this.stopPlayback();
+		}
+	}
+
+	endScrub() {
+		if (this.#resumeAfterScrub) {
+			this.#resumeAfterScrub = false;
+			this.startPlayback();
+		}
 	}
 
 	startPlayback() {

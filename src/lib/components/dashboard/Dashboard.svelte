@@ -8,6 +8,7 @@
 	import LatestSessionCard from '$lib/components/dashboard/widgets/LatestSessionCard.svelte';
 	import MostUsedCarCard from '$lib/components/dashboard/widgets/MostUsedCarCard.svelte';
 	import ActivityHeatmap from '$lib/components/dashboard/widgets/ActivityHeatmap.svelte';
+	import CarShowroomCard from '$lib/components/dashboard/widgets/CarShowroomCard.svelte';
 
 	const data = getContext<DataState>('data');
 
@@ -68,6 +69,8 @@
 					speed:   t.speedKmh,
 					gear:    t.gear,
 					rpm:     t.rpms,
+					accLat:  t.accLat ?? [],
+					accLon:  t.accLon ?? [],
 				};
 			})
 			.catch(() => {
@@ -100,12 +103,8 @@
 </script>
 
 <div class="dashboard">
-	<!-- Renderer placeholder — swap for the real 3D/car view once it's built.
-	     Kept deliberately generic (no copy, no CTA) so it doesn't ship as a
-	     fake "final" hero by accident. -->
-	<section class="hero hud-card hero--placeholder">
-		<span class="hero-label">Renderer</span>
-		<span class="hero-mark" aria-hidden="true">G</span>
+	<section class="hero hud-card">
+		<CarShowroomCard car={sortedLaps[0]?.car ?? null} game={sortedLaps[0]?.game ?? 'AC'} />
 	</section>
 
 	<div class="c-laps"><StatCard icon="flag" label="Monthly Laps" value={String(monthlyLaps)} /></div>
@@ -143,6 +142,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
+		overflow: hidden;
 	}
 
 	/* Right: stat pill + peripherals on top, then the two metric cards, then activity */
@@ -162,32 +162,6 @@
 	.c-car :global(.card),
 	.c-activity :global(.card) {
 		height: 100%;
-	}
-
-	.hero--placeholder {
-		border-style: dashed;
-	}
-
-	.hero-label {
-		font-size: 11px;
-		letter-spacing: 0.14em;
-		text-transform: uppercase;
-		color: var(--color-muted);
-		font-weight: 600;
-	}
-
-	.hero-mark {
-		position: absolute;
-		top: 50%;
-		left: 50%;
-		transform: translate(-50%, -50%);
-		font-size: 120px;
-		font-weight: 900;
-		line-height: 1;
-		color: var(--color-text);
-		opacity: 0.03;
-		user-select: none;
-		pointer-events: none;
 	}
 
 	@media (max-width: 1200px) {

@@ -8,6 +8,7 @@
 	import ZoomControl from '$lib/components/analysis/map/ZoomControl.svelte';
 	import HudPlaybar from '$lib/components/analysis/telemetry/HudPlaybar.svelte';
 	import GraphSidebar from '$lib/components/analysis/telemetry/GraphSidebar.svelte';
+	import GForceWidget from '$lib/components/analysis/telemetry/GForceWidget.svelte';
 	import { ZOOM_UI_MIN, ZOOM_UI_MAX, MAX_COMP_LAPS, type AnalysisState, type MapView, type UiState } from '$lib/components/analysis/state';
 
 	interface Props {
@@ -18,11 +19,7 @@
 
 	let { analysis, map, ui }: Props = $props();
 
-	// Two competing designs for where the telemetry graphs live — inline
-	// under the playbar, or docked as a sidebar — toggled from the button
-	// on HudPlaybar. Owned here (rather than in HudPlaybar) since it's
-	// this component that decides whether GraphSidebar renders at all.
-	let graphMode = $state<'playbar' | 'sidebar'>('playbar');
+	let graphsOpen = $state(false);
 
 	// TODO(nav): IconRail removed along with chrome/. Sessions/Telemetry/Settings still
 	// work — closing the lap tab in SessionTabs (see +page.svelte) returns to Sessions,
@@ -48,9 +45,12 @@
 				onRemoveComparison={(uuid) => analysis.removeCompLap(uuid)}
 				maxReached={analysis.compLaps.length >= MAX_COMP_LAPS}
 			/>
+			<div class="segment-slot">
+				<SegmentMap {analysis} />
+			</div>
 		</div>
 
-		<div class="ov ov-topright">
+		<div class="ov ov-telemetry">
 			{#if analysis.selectedLap}
 				<div class="tel-slot">
 					<TelemetryWidget driver={analysis.primaryDriver} />
@@ -65,12 +65,10 @@
 					/>
 				</div>
 			{/each}
-			<div class="segment-slot">
-				<SegmentMap {analysis} />
-			</div>
 		</div>
 
 		<div class="ov ov-bottomleft">
+			<GForceWidget {analysis} />
 			<SectorComparison sectors={analysis.sectors} />
 		</div>
 
@@ -78,14 +76,19 @@
 			<ZoomControl value={map.zoomLevel} min={ZOOM_UI_MIN} max={ZOOM_UI_MAX} onChange={(v) => map.setZoom(v)} />
 		</div>
 
-		{#if graphMode === 'sidebar'}
+		{#if graphsOpen && ui.graphPlacement === 'side'}
 			<div class="ov ov-right">
-				<GraphSidebar {analysis} onClose={() => (graphMode = 'playbar')} />
+				<GraphSidebar {analysis} {map} onClose={() => (graphsOpen = false)} />
 			</div>
 		{/if}
 	</div>
 
-	<HudPlaybar {analysis} {graphMode} onToggleGraphMode={() => (graphMode = graphMode === 'playbar' ? 'sidebar' : 'playbar')} />
+	<HudPlaybar
+		{analysis}
+		{graphsOpen}
+		placement={ui.graphPlacement}
+		onToggleGraphs={() => (graphsOpen = !graphsOpen)}
+	/>
 </div>
 
 <style>
@@ -115,24 +118,25 @@
 		gap: 12px;
 	}
 
-	/* Right-anchored row: telemetry widgets pack against the right edge,
-	   sized to their own content, with the segment map as the last
-	   (rightmost) item. Wraps to a second line if enough comparisons
-	   are added that it can't all fit on one. */
-	.ov-topright {
+	.ov-telemetry {
 		top: 14px;
 		left: 328px;
-		right: 14px;
+		width: 280px;
 		display: flex;
-		flex-wrap: wrap;
-		justify-content: flex-end;
-		align-items: flex-start;
+		flex-direction: column;
 		gap: 12px;
 	}
 
 	.ov-bottomleft {
 		left: 14px;
 		bottom: 14px;
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 12px;
+	}
+
+	.ov-bottomleft > :global(.sector-comparison) {
 		width: 258px;
 	}
 

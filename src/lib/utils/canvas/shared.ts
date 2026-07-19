@@ -9,12 +9,15 @@ export interface Trace {
 	speed:   number[];
 	gear:    number[];
 	rpm:     number[];
+	accLat:  number[];
+	accLon:  number[];
 }
 
 export interface DownsampledTrace {
 	gas:   number[];
 	brake: number[];
 	steer: number[];
+	speed: number[];
 	time:  number[];
 }
 
@@ -63,6 +66,7 @@ export function downsample(src: Trace, _lapTimeSec: number): DownsampledTrace | 
 	const gas   = new Array<number>(N).fill(0);
 	const brake = new Array<number>(N).fill(0);
 	const steer = new Array<number>(N).fill(0);
+	const speed = new Array<number>(N).fill(0);
 	const time  = new Array<number>(N).fill(0);
 	const cnt   = new Array<number>(N).fill(0);
 
@@ -71,20 +75,27 @@ export function downsample(src: Trace, _lapTimeSec: number): DownsampledTrace | 
 		if (src.gas[i]   > gas[b])   gas[b]   = src.gas[i];
 		if (src.brake[i] > brake[b]) brake[b] = src.brake[i];
 		steer[b] += src.steer[i];
+		speed[b] += src.speed[i] ?? 0;
 		const t = src.time[i];
 		if (cnt[b] === 0 || t < time[b]) time[b] = t;
 		cnt[b]++;
 	}
 
-	for (let b = 0; b < N; b++) if (cnt[b] > 0) steer[b] /= cnt[b];
+	for (let b = 0; b < N; b++) {
+		if (cnt[b] > 0) {
+			steer[b] /= cnt[b];
+			speed[b] /= cnt[b];
+		}
+	}
 
 	fillGaps(gas, cnt);
 	fillGaps(brake, cnt);
 	fillGaps(steer, cnt);
+	fillGaps(speed, cnt);
 	fillGaps(time, cnt);
 	for (let b = 1; b < N; b++) if (time[b] < time[b - 1]) time[b] = time[b - 1];
 
-	return { gas, brake, steer, time };
+	return { gas, brake, steer, speed, time };
 }
 
 export function chartWindowFor(_ds: DownsampledTrace, _lapTimeSec: number): ChartWindow {

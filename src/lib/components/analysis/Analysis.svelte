@@ -85,6 +85,7 @@
 			bind:gamePaths={data.gamePaths}
 			bind:appZoom={data.appZoom}
 			bind:traceZoom={ui.traceZoom}
+			bind:graphPlacement={ui.graphPlacement}
 			onClose={() => ui.closeSettings()}
 		/>
 	{/if}

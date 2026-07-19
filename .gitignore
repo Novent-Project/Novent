@@ -29,7 +29,7 @@ vite.config.ts.timestamp-*
 
 __pycache__/
 backend.py
-
+backend.spec
 # Package lock
 package-lock.json
 

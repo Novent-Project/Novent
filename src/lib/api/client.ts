@@ -53,3 +53,12 @@ export async function requestOk(path: string, opts: RequestOptions = {}): Promis
 		return false;
 	}
 }
+
+export async function tryRequestBinary(path: string, opts: RequestOptions = {}): Promise<ArrayBuffer | null> {
+	try {
+		const res = await send(path, opts);
+		return res.ok ? await res.arrayBuffer() : null;
+	} catch {
+		return null;
+	}
+}

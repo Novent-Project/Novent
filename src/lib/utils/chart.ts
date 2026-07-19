@@ -80,9 +80,10 @@ export function buildChartLine(
 
 	const span   = Math.max(range.max - range.min, 1e-6);
 	const toX    = (t: number) => Math.min(width, Math.max(0, (t / lapTime) * width));
+	const pad    = Math.min(6, height * 0.1);
 	const toY    = (v: number) => {
 		const clamped = Math.min(range.max, Math.max(range.min, v));
-		return height - ((clamped - range.min) / span) * height;
+		return pad + (height - 2 * pad) * (1 - (clamped - range.min) / span);
 	};
 
 	const stride = Math.max(1, Math.floor(n / Math.max(width, 1)));
