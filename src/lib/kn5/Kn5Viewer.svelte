@@ -80,6 +80,10 @@
 		}
 	}
 
+	export function snapshotSide(): string | null {
+		return viewer?.snapshotSide() ?? null;
+	}
+
 	async function openClicked() {
 		const f = await openFile?.();
 		if (f) await load(f);

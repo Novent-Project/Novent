@@ -11,18 +11,23 @@
 
 	interface Props {
 		cars?: CarUsage[];
+		heroImage?: string | null;
 	}
 
-	let { cars = [] }: Props = $props();
+	let { cars = [], heroImage = null }: Props = $props();
 
 	let maxLaps = $derived(Math.max(1, ...cars.map(c => c.laps)));
 </script>
 
 <div class="card hud-card">
 	{#if cars.length}
-		<div class="placeholder hero" aria-hidden="true">
-			<Icon name="car" size={32} />
-		</div>
+		{#if heroImage}
+			<img class="hero hero-img" src={heroImage} alt="Side profile of {formatName(cars[0].car)}" />
+		{:else}
+			<div class="placeholder hero" aria-hidden="true">
+				<Icon name="car" size={32} />
+			</div>
+		{/if}
 
 		<ul class="list">
 			{#each cars as c (c.car)}
@@ -74,6 +79,16 @@
 		width: 100%;
 		height: 150px;
 		margin-bottom: 12px;
+	}
+
+	.hero-img {
+		display: block;
+		object-fit: contain;
+		border-radius: var(--radius-sm);
+		border: 1px solid var(--color-border);
+		background: var(--card-bg);
+		padding: 6px 10px;
+		box-sizing: border-box;
 	}
 
 	.list {

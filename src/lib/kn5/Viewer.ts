@@ -21,12 +21,14 @@ export class Viewer {
 
 	private resetPos = new THREE.Vector3(4, 2, 5);
 	private resetTarget = new THREE.Vector3(0, 0.6, 0);
+	private modelSize = new THREE.Vector3(1, 1, 1);
+	private modelMaxDim = 1;
 
 	private frameId = 0;
 	private resizeObserver: ResizeObserver;
 
 	constructor(canvas: HTMLCanvasElement) {
-		this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+		this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
 		this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 		this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 		this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -131,6 +133,8 @@ export class Viewer {
 		this.scene.add(obj);
 
 		const maxDim = Math.max(size.x, size.y, size.z) || 1;
+		this.modelSize.copy(size);
+		this.modelMaxDim = maxDim;
 
 		const target = new THREE.Vector3(0, size.y * 0.42, 0);
 		const dist = maxDim * 1.5 + 0.5;
@@ -163,6 +167,46 @@ export class Viewer {
 		this.camera.position.copy(this.resetPos);
 		this.controls.target.copy(this.resetTarget);
 		this.controls.update();
+	}
+
+	snapshotSide(width = 1280, height = 448): string | null {
+		if (!this.model) return null;
+		const prevPr = this.renderer.getPixelRatio();
+		const prevAspect = this.camera.aspect;
+		const prevPos = this.camera.position.clone();
+		const prevTarget = this.controls.target.clone();
+		const prevBg = this.scene.background;
+
+		const prevFov = this.camera.fov;
+		this.scene.background = null;
+		this.renderer.setPixelRatio(1);
+		this.renderer.setSize(width, height, false);
+		this.camera.aspect = width / height;
+		this.camera.fov = 14;
+		const tanY = Math.tan((this.camera.fov * Math.PI) / 360);
+		const tanX = tanY * this.camera.aspect;
+		const y = this.modelSize.y * 0.45;
+		const dist = Math.max(
+			(this.modelSize.z * 0.5 * 1.12) / tanX,
+			(this.modelSize.y * 0.5 * 1.3) / tanY
+		) + this.modelSize.x * 0.5;
+		this.camera.position.set(dist, y, 0);
+		this.camera.lookAt(0, y, 0);
+		this.camera.updateProjectionMatrix();
+		this.renderer.render(this.scene, this.camera);
+		const url = this.renderer.domElement.toDataURL('image/png');
+
+		this.scene.background = prevBg;
+		this.renderer.setPixelRatio(prevPr);
+		this.camera.fov = prevFov;
+		this.camera.aspect = prevAspect;
+		this.camera.updateProjectionMatrix();
+		this.camera.position.copy(prevPos);
+		this.controls.target.copy(prevTarget);
+		this.controls.update();
+		this.resize();
+		this.composer.render();
+		return url;
 	}
 
 	setAutoRotate(v: boolean) {

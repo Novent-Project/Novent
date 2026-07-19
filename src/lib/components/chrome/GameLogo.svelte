@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { gameShort } from '$lib/utils';
-	import acLogo from '$lib/assets/Logos/AssetoCorsaLogo2.svg';
+	import acLogo from '$lib/assets/Logos/ac-symbol-dark.svg';
 
 	interface Props {
 		game?: string;

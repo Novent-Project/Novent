@@ -94,7 +94,7 @@ export async function buildModel(kn5: Kn5, maxAnisotropy: number): Promise<Build
 			if (t) params.map = t;
 		}
 		const txNormal = mapping(m, 'txNormal') ?? mapping(m, 'txNormalDetail');
-		if (txNormal) {
+		if (txNormal && !/damage/i.test(txNormal)) {
 			const t = await getTexture(txNormal, false);
 			if (t) {
 				params.normalMap = t;

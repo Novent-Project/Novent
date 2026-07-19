@@ -40,6 +40,7 @@
 
 	let latestUuid = $derived(sortedLaps[0]?.uuid ?? null);
 	let latestTrace = $state<Trace | null>(null);
+	let heroShot = $state<string | null>(null);
 
 	$effect(() => {
 		const uuid = latestUuid;
@@ -123,14 +124,18 @@
 
 <div class="dashboard">
 	<section class="hero hud-card">
-		<CarShowroomCard car={sortedLaps[0]?.car ?? null} game={sortedLaps[0]?.game ?? 'AC'} />
+		<CarShowroomCard
+			car={sortedLaps[0]?.car ?? null}
+			game={sortedLaps[0]?.game ?? 'AC'}
+			onSnapshot={(shot) => (heroShot = shot)}
+		/>
 	</section>
 
 	<div class="c-laps"><StatCard icon="flag" label="Monthly Laps" value={String(monthlyLaps)} /></div>
 	<div class="c-peripherals"><PeripheralsCard /></div>
 
 	<div class="c-latest"><LatestSessionCard session={latest} trace={latestTrace} /></div>
-	<div class="c-car"><MostUsedCarCard cars={topCars} /></div>
+	<div class="c-car"><MostUsedCarCard cars={topCars} heroImage={heroShot} /></div>
 	<div class="c-activity"><ActivityHeatmap entries={heatmapEntries} stats={activityStats} /></div>
 </div>
 

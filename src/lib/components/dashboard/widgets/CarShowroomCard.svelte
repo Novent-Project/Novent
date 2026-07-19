@@ -3,7 +3,11 @@
 	import { fetchCarModel } from '$lib/api';
 	import { formatName } from '$lib/utils';
 
-	let { car, game }: { car: string | null; game: string } = $props();
+	let { car, game, onSnapshot }: {
+		car: string | null;
+		game: string;
+		onSnapshot?: (dataUrl: string) => void;
+	} = $props();
 
 	let supported = $derived(game.trim().toUpperCase() === 'AC');
 
@@ -38,6 +42,9 @@
 			loadedCar  = target;
 			loadedInto = v;
 			await v.load({ name: formatName(target), data });
+			if (cancelled) return;
+			const shot = v.snapshotSide();
+			if (shot) onSnapshot?.(shot);
 		});
 		return () => { cancelled = true; };
 	});
