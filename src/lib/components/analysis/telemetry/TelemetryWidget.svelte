@@ -5,10 +5,7 @@
 
 	interface Props {
 		driver: DriverTelemetry;
-		/** Whether the ghost overlay for this driver's lap is currently shown on the map. */
 		ghostVisible?: boolean;
-		/** If provided, the avatar becomes a click target that toggles the ghost overlay.
-		 *  Omit for driver cards that shouldn't be toggleable (e.g. the primary driver). */
 		onToggleGhost?: () => void;
 	}
 
@@ -104,8 +101,6 @@
 		transform: translateY(-1px);
 	}
 
-	/* Ghost overlay hidden for this driver: grey out the whole card so it
-	   reads as "off" at a glance, while staying clickable to bring it back. */
 	.widget.ghost-off {
 		opacity: 0.45;
 		filter: grayscale(0.6);
@@ -132,9 +127,6 @@
 		opacity: 1;
 	}
 
-	/* Row 1 — always visible, deliberately minimal so it fits inside
-	   narrow slots (e.g. the comparison picker) without any of these
-	   pieces needing to shrink or wrap. */
 	.row-main {
 		display: flex;
 		align-items: center;
@@ -157,8 +149,6 @@
 		transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
 	}
 
-	/* Only rendered as a <button> when it's an actual toggle (onToggleGhost
-	   is set) — everything below only matters in that case. */
 	.avatar[type='button'] {
 		cursor: pointer;
 	}
@@ -203,12 +193,6 @@
 		margin-left: 2px;
 	}
 
-	/* Row 2 — hidden by default, revealed on hover. A plain max-height
-	   collapse rather than a grid-fr trick: it's a couple lines longer
-	   but it can't silently fail to collapse the way fr-tracks can when
-	   nowrap content is involved, and it grows/shrinks in height (which
-	   this card has room for) rather than width (which the comparison
-	   picker's fixed-width slots don't). */
 	.row-extra {
 		max-height: 0;
 		overflow: hidden;

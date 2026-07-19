@@ -1,14 +1,16 @@
 <script lang="ts">
 	import { formatName } from '$lib/utils';
 	import Icon from '$lib/components/chrome/Icon.svelte';
+	import GameLogo from '$lib/components/chrome/GameLogo.svelte';
 
 	interface CarUsage {
-		car:  string;
-		laps: number;
+		car:   string;
+		laps:  number;
+		game?: string;
 	}
 
 	interface Props {
-		cars?: CarUsage[]; // expects up to 2 entries
+		cars?: CarUsage[];
 	}
 
 	let { cars = [] }: Props = $props();
@@ -18,8 +20,6 @@
 
 <div class="card hud-card">
 	{#if cars.length}
-		<!-- Placeholder hero shot for the most-used car — swap for the real
-		     render/photo once that's wired up. -->
 		<div class="placeholder hero" aria-hidden="true">
 			<Icon name="car" size={32} />
 		</div>
@@ -27,10 +27,8 @@
 		<ul class="list">
 			{#each cars as c (c.car)}
 				<li class="row">
-					<!-- Placeholder per-car thumb — swap for the real render/photo
-					     once that's wired up. -->
-					<span class="placeholder thumb" aria-hidden="true">
-						<Icon name="car" size={20} />
+					<span class="placeholder thumb thumb--logo" aria-hidden="true">
+						<GameLogo game={c.game ?? 'AC'} size={24} />
 					</span>
 
 					<div class="info">
@@ -101,6 +99,11 @@
 		flex: 0 0 auto;
 		width: 48px;
 		height: 48px;
+	}
+
+	.thumb--logo {
+		border-style: solid;
+		background: var(--card-bg);
 	}
 
 	.info {

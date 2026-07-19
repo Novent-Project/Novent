@@ -25,9 +25,7 @@ export interface Standing {
 	time:       string;
 	gap?:       string;
 	isPrimary?: boolean;
-	/** Comparison-lap uuid, present on non-primary rows so the leaderboard can remove them. */
 	uuid?:      string;
-	/** Ghost color for this row, mirrored on the map and telemetry widget. */
 	color?:     string;
 }
 
@@ -51,8 +49,6 @@ export interface DriverTelemetry {
 	rpm:      number;
 }
 
-/** A comparison lap's live telemetry, paired with the identity needed to
- *  toggle/remove it — what TelemetryView actually renders per widget. */
 export interface CompEntry {
 	uuid:         string;
 	driver:       DriverTelemetry;
@@ -62,8 +58,6 @@ export interface CompEntry {
 const SEGMENTS    = 8;
 const DRIVER_COLOR = '#10b981';
 
-// One color per comparison slot, cycled if more comparisons are added than
-// colors — distinguishes ghosts on the map and their telemetry widgets.
 const COMP_COLORS = ['#e5e7eb', '#f59e0b', '#38bdf8', '#c084fc', '#fb7185', '#facc15'];
 export const MAX_COMP_LAPS = COMP_COLORS.length;
 
@@ -84,10 +78,6 @@ export class AnalysisState {
 	readonly segments = SEGMENTS;
 
 	selectedLap     = $state<Lap | null>(null);
-	// $state.raw: these hold large sample arrays that hot paths (canvas
-	// drawing, per-frame index lookups) iterate — a deep proxy would put a
-	// trap on every element read. All updates already replace the value
-	// wholesale rather than mutating in place.
 	compLaps        = $state.raw<CompLap[]>([]);
 	currentTrace    = $state.raw<Trace>(EMPTY_TRACE);
 	dsTrace         = $state.raw<DownsampledTrace | null>(null);
@@ -105,26 +95,18 @@ export class AnalysisState {
 	#rafId    = 0;
 	#token    = 0;
 
-	/** Last known ghost index per comparison uuid — the `hint` that keeps
-	 *  traceIndexAtTime amortized O(1) during playback. Correctness never
-	 *  depends on it (a stale hint just means a binary-search fallback). */
 	#compIdxHints = new Map<string, number>();
 	#resumeOnActivate = false;
 	#resumeAfterScrub = false;
 
 	constructor(private readonly data: DataState) {}
 
-	// ---------- derived ----------
 	curNorm        = $derived(this.currentTrace.normPos[this.playbackIdx] ?? 0);
 	lapLen         = $derived(lapLength(this.currentTrace));
 	primarySample  = $derived(sampleAt(this.currentTrace, this.playbackIdx));
 	driverName     = $derived(this.selectedLap?.player_name || 'You');
 	currentSegment = $derived(segmentIndex(this.curNorm, SEGMENTS));
 
-	/** Each comparison lap's sample index at the current playback time (-1 if
-	 *  it has no samples). Computed once per frame here and shared by every
-	 *  consumer (compSample, compEntries, the map's ghost dots) instead of
-	 *  each doing its own lookup. */
 	compIndices = $derived.by(() =>
 		this.compLaps.map(c => {
 			if (!c.trace.time.length) return -1;
@@ -231,7 +213,6 @@ export class AnalysisState {
 		)
 	);
 
-	// ---------- lap selection ----------
 	async selectLap(lap: Lap) {
 		const token = ++this.#token;
 		this.stopPlayback();
@@ -291,10 +272,6 @@ export class AnalysisState {
 		this.#compIdxHints.clear();
 	}
 
-	// ---------- tab visibility ----------
-	/** Pause the playback loop while this state's tab is in the background —
-	 *  nothing renders it, so the rAF loop would just burn frames. Remembers
-	 *  whether playback was running so activate() can pick it back up. */
 	deactivate() {
 		if (this.isPlaying) this.#resumeOnActivate = true;
 		this.stopPlayback();
@@ -307,7 +284,6 @@ export class AnalysisState {
 		}
 	}
 
-	// ---------- playback ----------
 	seek(t: number) {
 		const clamped = Math.max(0, Math.min(this.resolvedLapTime, t));
 		const idx     = traceIndexAtTime(this.currentTrace.time, clamped);

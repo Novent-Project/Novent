@@ -205,9 +205,7 @@ export async function buildModel(kn5: Kn5, maxAnisotropy: number): Promise<Build
 		geo.setAttribute('position', new THREE.BufferAttribute(node.positions, 3));
 		if (node.normals && !encrypted) geo.setAttribute('normal', new THREE.BufferAttribute(node.normals, 3));
 		if (node.uvs) {
-			const uv = node.uvs;
-			for (let i = 1; i < uv.length; i += 2) uv[i] = 1 - uv[i];
-			geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+			geo.setAttribute('uv', new THREE.BufferAttribute(node.uvs, 2));
 		}
 		if (node.tangents && !encrypted) {
 			const t3 = node.tangents;

@@ -5,9 +5,6 @@ interface CompLap {
 	trace: Trace;
 	ds:    DownsampledTrace;
 	color: string;
-	/** Sample index of this lap's ghost dot at the current playback time
-	 *  (-1 = no samples). Computed by the caller (AnalysisState.compIndices)
-	 *  so the per-frame lookup happens once, not per consumer. */
 	idx:   number;
 }
 
@@ -40,15 +37,6 @@ export interface BoundaryFix {
 	dz:    number;
 }
 
-/**
- * Boundaries come from a separate, independently-calibrated source
- * (map.ini reconstruction, manual recording, etc.) and may not agree with
- * the trace's world coordinates in scale or position. This computes a
- * uniform scale + offset that maps the boundary's bounding box onto the
- * trace's bounding box, using the trace as ground truth. Uniform scale
- * (not independent X/Z) preserves the boundary's shape — it only gets
- * resized/repositioned, never stretched.
- */
 export function calibrateBoundary(trace: Trace, boundaries: TrackBoundaries | null): BoundaryFix | null {
 	if (!boundaries?.outer?.length) return null;
 
@@ -81,11 +69,6 @@ export function calibrateBoundary(trace: Trace, boundaries: TrackBoundaries | nu
 	const traceCx = (minX + maxX) / 2, traceCz = (minZ + maxZ) / 2;
 	const boundCx = (bMinX + bMaxX) / 2, boundCz = (bMinZ + bMaxZ) / 2;
 
-	// Boundaries that already agree with the trace's world space (the
-	// backend's map.ini reconstruction emits true world coordinates) must be
-	// drawn as-is: bbox-fitting them onto the racing line would shrink the
-	// ribbon, because track edges legitimately extend beyond the driven line.
-	// Only fit sources that clearly live in a different coordinate space.
 	const centerDist = Math.hypot(boundCx - traceCx, boundCz - traceCz);
 	if (scale > 0.7 && scale < 1.3 && centerDist < traceDiag * 0.1) return null;
 
@@ -121,13 +104,6 @@ export function fitMap(
 	};
 }
 
-/**
- * Everything drawn on the map that doesn't move during playback — boundaries,
- * the colored racing line, ghost polylines, the start dot — cached on an
- * offscreen canvas so each playback frame is a blit plus the moving dots.
- * Rebuilt only when a keyed input changes (pan/zoom, resize, new traces,
- * boundaries arriving, ghosts toggled).
- */
 interface StaticLayer {
 	canvas:      HTMLCanvasElement;
 	w:           number;
@@ -142,10 +118,7 @@ interface StaticLayer {
 	boundaryFix: BoundaryFix | null;
 	compTraces:  Trace[];
 	compColors:  string[];
-	/** Trace bounding-box diagonal — only depends on `trace`, cached with it. */
 	diagLen:     number;
-	/** Bleed margin (screen px) baked around the viewport so mid-gesture pans
-	 *  don't reveal blank canvas at the edges. */
 	margin:      number;
 }
 
@@ -188,7 +161,6 @@ function renderStaticLayer(
 	ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 	ctx.clearRect(0, 0, fullW, fullH);
 
-	// Shifted by the margin so the viewport sits centered in the larger bitmap.
 	const toScreen = (wx: number, wz: number) => ({
 		sx: wx  *  scale + offsetX + m,
 		sz: wz  * -scale + offsetY + m,
@@ -348,8 +320,6 @@ export function drawMap(
 		staticLayers.set(canvas, layer);
 	}
 
-	// compLaps is a fresh array each call — compare by the identities that
-	// affect the static drawing (which traces, in what colors).
 	const compsChanged =
 		layer.compTraces.length !== compLaps.length ||
 		compLaps.some((c, i) => layer.compTraces[i] !== c.trace || layer.compColors[i] !== c.color);
@@ -357,18 +327,12 @@ export function drawMap(
 	const geometryDirty = layer.w !== w || layer.h !== h || layer.dpr !== dpr ||
 		layer.trace !== trace || layer.ds !== ds ||
 		layer.boundaries !== boundaries || layer.boundaryFix !== boundaryFix || compsChanged;
-	
 	const transformDirty = layer.scale !== scale || layer.offsetX !== offsetX || layer.offsetY !== offsetY;
 
-	// Blit geometry: where the baked bitmap lands on screen at the current
-	// transform (collapses to k=1, tx=ty=0 when the transforms match).
 	let k  = scale / layer.scale;
 	let tx = offsetX - k * layer.offsetX;
 	let ty = offsetY - k * layer.offsetY;
 
-	// Does the baked bitmap (viewport + bleed margin) still cover the whole
-	// viewport at the current transform? A gesture that outruns the margin
-	// forces a mid-gesture re-bake — one frame's hitch instead of black edges.
 	const covered =
 		tx - k * layer.margin <= 0 &&
 		ty - k * layer.margin <= 0 &&

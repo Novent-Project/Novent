@@ -17,8 +17,6 @@
 
 		if (!canvas || width === 0 || height === 0 || !analysis.currentTrace.worldX.length) return;
 		map.maybeFit(analysis.currentTrace, width, height, analysis.fitKey, analysis.boundaries);
-		// Visible ghosts, each carrying its playhead index — computed once in
-		// AnalysisState.compIndices rather than re-searched inside drawMap.
 		const ghosts = analysis.compLaps
 			.map((c, i) => ({ trace: c.trace, ds: c.ds, color: c.color, idx: analysis.compIndices[i] ?? -1, ghostVisible: c.ghostVisible }))
 			.filter(c => c.ghostVisible);

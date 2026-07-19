@@ -12,7 +12,6 @@
 		try {
 			await getCurrentWindow().hide();
 		} catch {
-			// not running inside Tauri
 		}
 		onClose();
 	}
@@ -21,7 +20,6 @@
 		try {
 			await invoke('quit');
 		} catch {
-			// not running inside Tauri
 			onClose();
 		}
 	}

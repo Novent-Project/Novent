@@ -1,17 +1,29 @@
 <script lang="ts">
+	import { formatName, gameShort } from '$lib/utils';
+	import GameLogo from '$lib/components/chrome/GameLogo.svelte';
+
 	interface Entry {
 		date:  string;
 		value: number;
 	}
 
+	interface Stats {
+		game:      string;
+		track:     string;
+		totalLaps: number;
+		bestLap:   string;
+	}
+
 	interface Props {
 		entries?: Entry[];
 		weeks?:   number;
+		stats?:   Stats | null;
 	}
 
-	let { entries = [], weeks = 18 }: Props = $props();
+	let { entries = [], weeks = 18, stats = null }: Props = $props();
 
 	const GAP = 3;
+	const MAX_CELL = 12;
 	const MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 	function toKey(d: Date) {
@@ -21,7 +33,7 @@
 	let gridW = $state(0);
 	let gridH = $state(0);
 
-	let cellSize = $derived(gridH > 0 ? (gridH - GAP * 6) / 7 : 0);
+	let cellSize = $derived(gridH > 0 ? Math.min(MAX_CELL, (gridH - GAP * 6) / 7) : 0);
 
 	let effectiveWeeks = $derived(
 		cellSize > 0 && gridW > 0
@@ -69,17 +81,12 @@
 		return cols;
 	});
 
-	let monthLabels = $derived.by(() => {
-		let lastMonth = -1;
-		return grid.map(col => {
-			const m = col[0].date.getMonth();
-			if (m !== lastMonth) {
-				lastMonth = m;
-				return MONTH_LABELS[m];
-			}
-			return '';
-		});
-	});
+	let monthLabels = $derived.by(() =>
+		grid.map(col => {
+			const first = col.find(d => d.date.getDate() === 1 && !d.future);
+			return first ? MONTH_LABELS[first.date.getMonth()] : '';
+		})
+	);
 
 	let hasActivity = $derived(entries.some(e => e.value > 0));
 
@@ -98,7 +105,7 @@
 
 		<div class="grid" style="grid-template-columns: {colTemplate};" bind:clientWidth={gridW} bind:clientHeight={gridH}>
 			{#each grid as col, i (i)}
-				<div class="col">
+				<div class="col" style="grid-template-rows: repeat(7, {cellSize > 0 ? `${cellSize}px` : '1fr'});">
 					{#each col as day (day.key)}
 						<div
 							class="cell"
@@ -111,14 +118,39 @@
 			{/each}
 		</div>
 
-		<div class="legend">
-			<span>Less</span>
-			<div class="cell" data-level="0"></div>
-			<div class="cell" data-level="1"></div>
-			<div class="cell" data-level="2"></div>
-			<div class="cell" data-level="3"></div>
-			<div class="cell" data-level="4"></div>
-			<span>More</span>
+		<div class="footer">
+			{#if stats}
+				<div class="stats">
+					<div class="stat">
+						<span class="stat-label">Favorite Game</span>
+						<span class="stat-value game"><GameLogo game={stats.game} size={15} />{gameShort(stats.game)}</span>
+					</div>
+					<div class="stat">
+						<span class="stat-label">Favorite Track</span>
+						<span class="stat-value">{formatName(stats.track)}</span>
+					</div>
+					<div class="stat">
+						<span class="stat-label">Total Laps</span>
+						<span class="stat-value mono">{stats.totalLaps}</span>
+					</div>
+					<div class="stat">
+						<span class="stat-label">Best Lap</span>
+						<span class="stat-value mono">{stats.bestLap}</span>
+					</div>
+				</div>
+			{:else}
+				<span></span>
+			{/if}
+
+			<div class="legend">
+				<span>Less</span>
+				<div class="cell" data-level="0"></div>
+				<div class="cell" data-level="1"></div>
+				<div class="cell" data-level="2"></div>
+				<div class="cell" data-level="3"></div>
+				<div class="cell" data-level="4"></div>
+				<span>More</span>
+			</div>
 		</div>
 	</div>
 </div>
@@ -150,6 +182,8 @@
 	.month {
 		font-size: 10px;
 		color: var(--color-muted);
+		white-space: nowrap;
+		min-width: 0;
 	}
 
 	.grid {
@@ -158,12 +192,11 @@
 		display: grid;
 		gap: 3px;
 		justify-content: start;
+		align-content: start;
 	}
 
 	.col {
-		height: 100%;
 		display: grid;
-		grid-template-rows: repeat(7, 1fr);
 		gap: 3px;
 	}
 
@@ -188,11 +221,48 @@
 
 	.heatmap.empty .grid .cell[data-level] { background: var(--card-bg); border-color: var(--color-border); }
 
+	.footer {
+		display: flex;
+		align-items: flex-end;
+		justify-content: space-between;
+		gap: 16px;
+		flex: 0 0 auto;
+	}
+
+	.stats {
+		display: flex;
+		gap: 28px;
+	}
+
+	.stat {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+
+	.stat-label {
+		font-size: 9px;
+		text-transform: uppercase;
+		letter-spacing: 0.1em;
+		color: var(--color-subtle);
+	}
+
+	.stat-value {
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--color-text);
+	}
+
+	.stat-value.game {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+	}
+
 	.legend {
 		display: flex;
 		align-items: center;
 		gap: 4px;
-		align-self: flex-end;
 		flex: 0 0 auto;
 	}
 

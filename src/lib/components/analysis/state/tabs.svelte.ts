@@ -5,7 +5,7 @@ import type { DataState } from '$lib/state/data.svelte.js';
 import type { Lap } from '$lib/api';
 
 export interface SessionTab {
-	readonly id:       string; // lap uuid
+	readonly id:       string;
 	readonly label:    string;
 	readonly loading:  boolean;
 	readonly analysis: AnalysisState;
@@ -21,29 +21,17 @@ interface PersistedTabs {
 
 function loadPersisted(): PersistedTabs {
 	try {
-		localStorage.removeItem(STORAGE_KEY); // stale key from when tabs persisted across app restarts
+		localStorage.removeItem(STORAGE_KEY);
 		const raw = sessionStorage.getItem(STORAGE_KEY);
 		if (!raw) return { openIds: [], activeId: null };
 		const parsed = JSON.parse(raw);
 		if (!Array.isArray(parsed.openIds)) return { openIds: [], activeId: null };
 		return { openIds: parsed.openIds, activeId: parsed.activeId ?? null };
 	} catch {
-		// Corrupt data, private-browsing storage block, etc. — just start empty.
 		return { openIds: [], activeId: null };
 	}
 }
 
-/**
- * Owns the set of open lap-analysis tabs. Each tab gets its own AnalysisState
- * and MapView so switching tabs doesn't discard playback position, comparison
- * lap, or pan/zoom for the tab you're leaving.
- *
- * Open tab ids + the active tab are mirrored to sessionStorage: leaving for
- * another route (dashboard) and coming back restores the same tabs, but a
- * fresh app launch starts clean at the session selector. Restoring re-fetches
- * telemetry for each tab (it isn't itself cached), so `restore()` is async
- * and tabs report `loading` until their fetch resolves.
- */
 export class TabsState {
 	tabs     = $state<SessionTab[]>([]);
 	activeId = $state<string | null>(null);
@@ -54,13 +42,6 @@ export class TabsState {
 		return this.tabs.find(t => t.id === this.activeId) ?? null;
 	}
 
-	/**
-	 * Re-opens whatever tabs were open on last visit. Assumes `data.laps` is
-	 * already populated by the time this is called — same assumption the rest
-	 * of this route makes (SessionsView and compCandidates both read
-	 * data.laps synchronously). If a persisted uuid no longer matches a lap
-	 * (deleted session, cleared history, etc.) it's silently dropped.
-	 */
 	async restore() {
 		const { openIds, activeId } = loadPersisted();
 		for (const uuid of openIds) {
@@ -130,9 +111,6 @@ export class TabsState {
 
 		await analysis.selectLap(lap);
 
-		// Replace rather than mutate: `tab` is the raw object we built above,
-		// not the proxy Svelte wraps around it once it's inside `this.tabs`,
-		// so flipping `tab.loading` in place wouldn't be seen as a change.
 		this.tabs = this.tabs.map(t => (t.id === id ? { ...t, loading: false } : t));
 	}
 
@@ -143,7 +121,6 @@ export class TabsState {
 				activeId: this.activeId,
 			}));
 		} catch {
-			// Storage unavailable (quota, private mode) — degrade to non-persistent.
 		}
 	}
 }

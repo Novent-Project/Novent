@@ -6,38 +6,17 @@
 	import { Icon as SteezeIcon, type IconSource } from '@steeze-ui/svelte-icon';
 
 	interface Props {
-		/** A @steeze-ui icon source (e.g. from @steeze-ui/heroicons). */
 		src?: IconSource;
-		/** One of the custom, app-specific icons defined below (no heroicon equivalent). */
 		name?: CustomIconName;
 		size?: number;
 		theme?: 'outline' | 'solid' | 'mini' | 'micro';
 		class?: string;
-		/** Explicit color override. Omit to inherit `color` from the parent (currentColor), same as before. */
 		color?: string;
-		/**
-		 * Dim the whole icon by this amount (0–1). Use this instead of
-		 * passing a semi-transparent `color` (e.g. an rgba/color-mix
-		 * value) — a translucent color gets applied to every path
-		 * individually, so anywhere two strokes/fills overlap (like the
-		 * cart handle crossing the body, or wheel dots sitting on a
-		 * stroke) that spot gets the alpha compositing applied twice and
-		 * reads darker than the rest of the icon. `opacity` is applied
-		 * once, to the fully-rendered icon as a whole, so overlaps stay
-		 * visually flat and consistent.
-		 */
 		opacity?: number;
 	}
 
 	let { src, name, size = 18, theme = 'solid', class: className = '', color, opacity }: Props = $props();
 
-	// The Safari stroke-scaling fix below pins stroke-width via `font-size`
-	// in `em`. That font-size must scale with this icon's own `size`, or
-	// every icon gets the exact same absolute stroke thickness regardless
-	// of how big it's rendered — fine at ~18px, but a big placeholder icon
-	// (e.g. 64px) ends up with hairline strokes next to normal-weight fills,
-	// since fills DO scale with size/viewBox but a fixed font-size doesn't.
-	// 0.0625 matches the stroke-width="1.5" used below on a 24 viewBox.
 	const STROKE_RATIO = 0.0625;
 	let fixStyle = $derived(
 		`font-size: ${size * STROKE_RATIO}px;` +

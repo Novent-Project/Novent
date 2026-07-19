@@ -8,7 +8,6 @@
 		try {
 			await getCurrentWindow().minimize();
 		} catch {
-			// not running inside Tauri (e.g. dev server in a browser tab)
 		}
 	}
 
@@ -18,7 +17,6 @@
 			if (await win.isMaximized()) await win.unmaximize();
 			else await win.maximize();
 		} catch {
-			// not running inside Tauri
 		}
 	}
 

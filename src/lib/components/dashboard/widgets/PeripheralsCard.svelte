@@ -17,10 +17,6 @@
 		{ id: 'controller', label: 'Controller', connected: false }
 	]);
 
-	// Best-effort classification of connected gamepads by device name.
-	// Many direct-drive wheelbases report wheel + pedals as a single HID
-	// device, so anything unmatched defaults to the wheelbase rather than
-	// a handheld controller.
 	function classify(id: string): PeripheralId {
 		const s = id.toLowerCase();
 		if (/shift|handbrake/.test(s)) return 'shifter';
@@ -77,7 +73,6 @@
 
 	.grid {
 		display: grid;
-		
 		grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
 		gap: 10px;
 	}

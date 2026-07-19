@@ -6,7 +6,6 @@
 	interface Props {
 		candidates: Lap[];
 		onPick:     (lap: Lap) => void;
-		/** True once the comparison cap is reached — disables the add button. */
 		disabled?:  boolean;
 	}
 

@@ -13,10 +13,6 @@
 	const ui         = new UiState();
 	const tabsState  = new TabsState(data);
 
-	// Sidebar's settings button links here as /analysis?settings=open since
-	// Settings is scoped to this route's UiState, not a global overlay. Pick
-	// it up on arrival, then strip the param so it doesn't reopen on refresh
-	// or reappear if the user later closes and reopens via browser back/forward.
 	$effect(() => {
 		if (page.url.searchParams.get('settings') === 'open') {
 			ui.openSettings();
@@ -53,12 +49,6 @@
 		if (!tabsState.tabs.length) ui.showSessions();
 	}
 
-	// Only the active tab is rendered (and only in telemetry view), so pause
-	// every other tab's playback loop — otherwise each open tab keeps a rAF
-	// loop mutating state 60×/s for content nothing displays, and performance
-	// degrades with every extra tab. Suspended tabs remember they were playing
-	// and resume when they become the visible tab again. untrack() so pausing
-	// (which writes isPlaying) can't re-trigger this effect.
 	$effect(() => {
 		const visible = ui.view === 'telemetry' ? tabsState.active : null;
 		const tabs    = tabsState.tabs;
@@ -84,6 +74,7 @@
 		<Settings
 			bind:gamePaths={data.gamePaths}
 			bind:appZoom={data.appZoom}
+			bind:appZoomAuto={data.appZoomAuto}
 			bind:traceZoom={ui.traceZoom}
 			bind:graphPlacement={ui.graphPlacement}
 			onClose={() => ui.closeSettings()}

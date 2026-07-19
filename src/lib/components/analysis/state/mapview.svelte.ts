@@ -41,13 +41,10 @@ export class MapView {
 			this.offsetY   = h / 2;
 			this.zoomLevel = 1;
 			this.#fittedFor = key;
-			this.#fixedFor  = undefined; // force boundary fix to recompute for this trace
+			this.#fixedFor  = undefined;
 			this.#nudge();
 		}
 
-		// Boundaries often arrive asynchronously, after the trace fit above has
-		// already run — so this is checked independently, on its own identity,
-		// rather than gated behind the same `key` the trace fit uses.
 		if (boundaries !== this.#fixedFor) {
 			this.boundaryFix = calibrateBoundary(trace, boundaries);
 			this.#fixedFor   = boundaries;

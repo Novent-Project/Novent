@@ -8,15 +8,11 @@
 	interface Props {
 		analysis: AnalysisState;
 		map?: MapView;
-		/** Lets the caller offer a way back to the inline (HudPlaybar) mode
-		 *  without the sidebar needing to know about `graphMode` itself. */
 		onClose?: () => void;
 	}
 
 	let { analysis, map, onClose }: Props = $props();
 
-	// Sidebar has real vertical room to work with, unlike the squeezed
-	// 40px rows under the playbar, so each channel gets a taller track.
 	const ROW_H = 128;
 
 	let sidebarEl = $state<HTMLDivElement | null>(null);
@@ -32,8 +28,6 @@
 	let primaryName = $derived(analysis.driverName);
 	let primaryDs = $derived(analysis.dsTrace);
 
-	// Same ghost-visibility source of truth as HudPlaybar/TelemetryWidget —
-	// laps toggled off there drop out of this chart and its tooltip too.
 	let visibleComps = $derived(
 		analysis.compLaps
 			.map((c, i) => ({ ...c, label: c.lap.player_name || `Reference ${i + 1}` }))
@@ -156,7 +150,6 @@
 		return (e.target as HTMLElement).closest<HTMLElement>('.grid-track[data-channel]')?.dataset.channel === 'delta';
 	}
 
-	// ---------- chart pan / zoom (identical scheme to HudPlaybar) ----------
 	const ZOOM_MIN = 1;
 	const ZOOM_MAX = 20;
 
@@ -218,15 +211,11 @@
 		});
 	});
 
-	// ---------- hover crosshair / tooltip ----------
 	type Channel = 'throttle' | 'brake' | 'steer' | 'speed' | 'delta';
 	const CHANNEL_LABEL: Record<Channel, string> = { throttle: 'Throttle', brake: 'Brake', steer: 'Steering', speed: 'Speed', delta: 'Delta' };
 
 	let hoverTime = $state<number | null>(null);
 	let hoverChannel = $state<Channel | null>(null);
-	// Anchored to sidebarEl's own box, same reasoning as HudPlaybar's
-	// hover-tooltip: a position:fixed tooltip would break under a
-	// backdrop-filter ancestor, so it's relative + absolute instead.
 	let hoverPos = $state({ x: 0, y: 0 });
 
 	function updateHover(e: PointerEvent) {
@@ -373,11 +362,6 @@
 			{/if}
 		</div>
 
-		<!-- Each channel block wraps PlaybarChart (which renders its own
-		     label row above the track) and, once it knows its own width,
-		     overlays a crosshair/playhead absolutely pinned to the block's
-		     bottom edge — which lines up with the track's bottom exactly,
-		     whatever height the label row above happens to take. -->
 		{#if deltaComps.length}
 			<div class="channel-block">
 				<PlaybarChart
@@ -664,9 +648,6 @@
 		white-space: nowrap;
 	}
 
-	/* Wraps a PlaybarChart's label row + track (the label row's own height
-	   is whatever PlaybarChart renders it as — the overlay below doesn't
-	   need to know that, since it's pinned to the block's bottom edge). */
 	.channel-block {
 		position: relative;
 		flex: none;
@@ -707,8 +688,6 @@
 		stroke: var(--color-accent-border);
 		stroke-width: 1;
 	}
-
-	/* ---------- hover tooltip (same styling as HudPlaybar's) ---------- */
 
 	.hover-tooltip {
 		position: absolute;

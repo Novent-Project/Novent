@@ -2,12 +2,13 @@
 	import { APP_ZOOM_MIN, APP_ZOOM_MAX, APP_ZOOM_STEP, APP_ZOOM_DEFAULT } from '$lib/state/data.svelte';
 
 	interface Props {
-		appZoom:   number;
-		traceZoom: number;
+		appZoom:     number;
+		appZoomAuto: boolean;
+		traceZoom:   number;
 		graphPlacement: 'bottom' | 'side';
 	}
 
-	let { appZoom = $bindable(), traceZoom = $bindable(), graphPlacement = $bindable() }: Props = $props();
+	let { appZoom = $bindable(), appZoomAuto = $bindable(), traceZoom = $bindable(), graphPlacement = $bindable() }: Props = $props();
 
 	const TRACE_ZOOM_MIN     = 0.5;
 	const TRACE_ZOOM_MAX     = 4;
@@ -30,9 +31,10 @@
 	<div class="zoom-row">
 		<div class="zoom-label">
 			<span>Interface zoom</span>
-			<span class="zoom-pct">{Math.round(appZoom * 100)}% scale</span>
+			<span class="zoom-pct">{appZoomAuto ? `Auto · ${Math.round(appZoom * 100)}% for this monitor` : `${Math.round(appZoom * 100)}% scale`}</span>
 		</div>
 		<div class="zoom-controls">
+			<button class="seg-btn" class:active={appZoomAuto} onclick={() => appZoomAuto = !appZoomAuto}>Auto</button>
 			<button onclick={() => adjustZoom(-APP_ZOOM_STEP)}>−</button>
 			<span>{Math.round(appZoom * 100)}%</span>
 			<button onclick={() => adjustZoom(APP_ZOOM_STEP)}>+</button>

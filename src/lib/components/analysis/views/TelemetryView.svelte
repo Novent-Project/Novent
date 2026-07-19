@@ -9,7 +9,9 @@
 	import HudPlaybar from '$lib/components/analysis/telemetry/HudPlaybar.svelte';
 	import GraphSidebar from '$lib/components/analysis/telemetry/GraphSidebar.svelte';
 	import GForceWidget from '$lib/components/analysis/telemetry/GForceWidget.svelte';
+	import { fly } from 'svelte/transition';
 	import { ZOOM_UI_MIN, ZOOM_UI_MAX, MAX_COMP_LAPS, type AnalysisState, type MapView, type UiState } from '$lib/components/analysis/state';
+	import { draggable } from '$lib/utils';
 
 	interface Props {
 		analysis: AnalysisState;
@@ -21,43 +23,42 @@
 
 	let graphsOpen = $state(false);
 
-	// TODO(nav): IconRail removed along with chrome/. Sessions/Telemetry/Settings still
-	// work — closing the lap tab in SessionTabs (see +page.svelte) returns to Sessions,
-	// and Settings opens via SessionHeaderCard's onSetup below — but there's no longer a
-	// persistent, always-visible way to switch modes. That should live in a proper tab
-	// bar once SessionTabs grows Sessions/Settings tabs of its own.
 </script>
 
 <div class="hud">
-	<div class="hud-main">
+	<div class="hud-main" data-drag-bounds>
 		<TrackMap {analysis} {map} />
 
 		<div class="ov ov-topleft">
-			<SessionHeaderCard
-				lap={analysis.selectedLap}
-				onPlay={() => analysis.togglePlayback()}
-				onSetup={() => ui.openSettings()}
-			/>
-			<StandingsCard
-				entries={analysis.standings}
-				candidates={analysis.compCandidates}
-				onAddComparison={(lap) => analysis.addCompLap(lap)}
-				onRemoveComparison={(uuid) => analysis.removeCompLap(uuid)}
-				maxReached={analysis.compLaps.length >= MAX_COMP_LAPS}
-			/>
-			<div class="segment-slot">
+			<div use:draggable={'session-header'}>
+				<SessionHeaderCard
+					lap={analysis.selectedLap}
+					onPlay={() => analysis.togglePlayback()}
+					onSetup={() => ui.openSettings()}
+				/>
+			</div>
+			<div use:draggable={'standings'}>
+				<StandingsCard
+					entries={analysis.standings}
+					candidates={analysis.compCandidates}
+					onAddComparison={(lap) => analysis.addCompLap(lap)}
+					onRemoveComparison={(uuid) => analysis.removeCompLap(uuid)}
+					maxReached={analysis.compLaps.length >= MAX_COMP_LAPS}
+				/>
+			</div>
+			<div class="segment-slot" use:draggable={'segment-map'}>
 				<SegmentMap {analysis} />
 			</div>
 		</div>
 
 		<div class="ov ov-telemetry">
 			{#if analysis.selectedLap}
-				<div class="tel-slot">
+				<div class="tel-slot" use:draggable={'telemetry-primary'}>
 					<TelemetryWidget driver={analysis.primaryDriver} />
 				</div>
 			{/if}
-			{#each analysis.compEntries as entry (entry.uuid)}
-				<div class="tel-slot">
+			{#each analysis.compEntries as entry, i (entry.uuid)}
+				<div class="tel-slot" use:draggable={{ key: `telemetry-comp-${i}`, persist: false }}>
 					<TelemetryWidget
 						driver={entry.driver}
 						ghostVisible={entry.ghostVisible}
@@ -68,16 +69,22 @@
 		</div>
 
 		<div class="ov ov-bottomleft">
-			<GForceWidget {analysis} />
-			<SectorComparison sectors={analysis.sectors} />
+			<div use:draggable={'g-force'}>
+				<GForceWidget {analysis} />
+			</div>
+			<div use:draggable={'sector-comparison'}>
+				<SectorComparison sectors={analysis.sectors} />
+			</div>
 		</div>
 
 		<div class="ov ov-bottomcenter">
-			<ZoomControl value={map.zoomLevel} min={ZOOM_UI_MIN} max={ZOOM_UI_MAX} onChange={(v) => map.setZoom(v)} />
+			<div use:draggable={'zoom-control'}>
+				<ZoomControl value={map.zoomLevel} min={ZOOM_UI_MIN} max={ZOOM_UI_MAX} onChange={(v) => map.setZoom(v)} />
+			</div>
 		</div>
 
 		{#if graphsOpen && ui.graphPlacement === 'side'}
-			<div class="ov ov-right">
+			<div class="ov ov-right" transition:fly={{ x: 380, duration: 260 }}>
 				<GraphSidebar {analysis} {map} onClose={() => (graphsOpen = false)} />
 			</div>
 		{/if}
@@ -136,7 +143,7 @@
 		gap: 12px;
 	}
 
-	.ov-bottomleft > :global(.sector-comparison) {
+	.ov-bottomleft :global(.sector-comparison) {
 		width: 258px;
 	}
 
@@ -146,10 +153,6 @@
 		transform: translateX(-50%);
 	}
 
-	/* Docked graph sidebar — the "other" of the two competing designs.
-	   Sits above ov-topright/ov-bottomleft when open; this is a first pass
-	   for comparing the two modes, not final layout arbitration between
-	   them. */
 	.ov-right {
 		top: 14px;
 		right: 14px;
@@ -162,8 +165,6 @@
 		height: 100%;
 	}
 
-	/* Content-sized, not stretched — each widget takes only the width it
-	   needs rather than growing to fill the row. */
 	.tel-slot {
 		flex: 0 0 auto;
 		width: 280px;

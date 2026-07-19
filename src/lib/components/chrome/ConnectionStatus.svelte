@@ -10,7 +10,7 @@
 	let label = $derived(
 		detection.status === 'idle'     ? 'No game detected' :
 		detection.status === 'detected' ? `${detection.game} detected` :
-		/* active */                      `${detection.game} — session active`
+		                      `${detection.game} — session active`
 	);
 </script>
 
@@ -37,12 +37,10 @@
 		transition: background 0.2s ease, box-shadow 0.2s ease;
 	}
 
-	/* game detected, no live session */
 	.conn.detected .conn-dot {
 		background: var(--color-muted);
 	}
 
-	/* live session — same visual language the old footer used */
 	.conn.active .conn-dot {
 		background: var(--color-accent);
 		box-shadow: 0 0 8px rgba(16, 185, 129, 0.7);

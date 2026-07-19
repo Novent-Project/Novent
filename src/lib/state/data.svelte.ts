@@ -4,15 +4,18 @@ const LAP_POLL_MS    = 3000;
 const STATUS_POLL_MS = 2000;
 const INIT_RETRIES   = 15;
 
-// App-wide interface zoom. Lives here (not in analysis/state/ui.svelte.ts) because
-// it now applies to the entire layout — sidebar and topbar included — not just the
-// analysis route. Persisted so it survives restarts.
 export const APP_ZOOM_MIN     = 0.5;
 export const APP_ZOOM_MAX     = 2.0;
 export const APP_ZOOM_STEP    = 0.1;
 export const APP_ZOOM_DEFAULT = 1;
 
 const APP_ZOOM_STORAGE_KEY = 'novent:app-zoom';
+const APP_ZOOM_AUTO_KEY    = 'novent:app-zoom-auto';
+
+function computeMonitorZoom(): number {
+	if (typeof window === 'undefined' || !window.screen?.width) return APP_ZOOM_DEFAULT;
+	return clampAppZoom(Math.min(window.screen.width / 1920, window.screen.height / 1080));
+}
 
 function loadStoredAppZoom(): number {
 	if (typeof localStorage === 'undefined') return APP_ZOOM_DEFAULT;
@@ -25,6 +28,17 @@ function loadStoredAppZoom(): number {
 	}
 }
 
+function loadStoredAppZoomAuto(): boolean {
+	if (typeof localStorage === 'undefined') return true;
+	try {
+		const raw = localStorage.getItem(APP_ZOOM_AUTO_KEY);
+		if (raw !== null) return raw === 'true';
+		return localStorage.getItem(APP_ZOOM_STORAGE_KEY) === null;
+	} catch {
+		return true;
+	}
+}
+
 function clampAppZoom(value: number): number {
 	return Math.min(APP_ZOOM_MAX, Math.max(APP_ZOOM_MIN, Math.round(value * 10) / 10));
 }
@@ -33,26 +47,47 @@ export class DataState {
 	laps      = $state<Lap[]>([]);
 	connected = $state(false);
 	game      = $state<string | null>(null);
-	// Not populated by the backend yet — see BackendStatus.session in api/types.ts.
 	session   = $state<string | null>(null);
 	gamePaths = $state<Record<string, string>>({ AC: '', ACC: '', iRacing: '', LMU: '' });
 	favorites = $state<Set<string>>(new Set());
 	loaded    = $state(false);
 
-	#appZoom = $state(loadStoredAppZoom());
+	#appZoom     = $state(loadStoredAppZoom());
+	#appZoomAuto = $state(loadStoredAppZoomAuto());
+	#monitorZoom = $state(computeMonitorZoom());
 
 	get appZoom(): number {
-		return this.#appZoom;
+		return this.#appZoomAuto ? this.#monitorZoom : this.#appZoom;
 	}
 
 	set appZoom(value: number) {
+		if (this.#appZoomAuto) this.appZoomAuto = false;
 		this.#appZoom = clampAppZoom(value);
 		if (typeof localStorage === 'undefined') return;
 		try {
 			localStorage.setItem(APP_ZOOM_STORAGE_KEY, String(this.#appZoom));
 		} catch {
-			/* ignore — e.g. storage unavailable/full */
 		}
+	}
+
+	get appZoomAuto(): boolean {
+		return this.#appZoomAuto;
+	}
+
+	set appZoomAuto(value: boolean) {
+		if (!value && this.#appZoomAuto) this.#appZoom = this.#monitorZoom;
+		this.#appZoomAuto = value;
+		if (value) this.#monitorZoom = computeMonitorZoom();
+		if (typeof localStorage === 'undefined') return;
+		try {
+			localStorage.setItem(APP_ZOOM_AUTO_KEY, String(value));
+			localStorage.setItem(APP_ZOOM_STORAGE_KEY, String(this.#appZoom));
+		} catch {
+		}
+	}
+
+	refreshMonitorZoom() {
+		this.#monitorZoom = computeMonitorZoom();
 	}
 
 	detection: DetectionState = $derived(
@@ -125,7 +160,6 @@ export class DataState {
 			const cfg = await fetchConfig();
 			this.gamePaths = cfg.games ?? this.gamePaths;
 		} catch {
-			/* keep defaults offline */
 		}
 	}
 }

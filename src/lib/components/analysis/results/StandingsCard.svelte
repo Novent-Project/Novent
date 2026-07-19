@@ -17,7 +17,6 @@
 		candidates: Lap[];
 		onAddComparison:    (lap: Lap) => void;
 		onRemoveComparison: (uuid: string) => void;
-		/** True once the comparison cap is reached — disables the add button. */
 		maxReached?: boolean;
 	}
 

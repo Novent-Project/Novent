@@ -10,10 +10,10 @@
 	let { detection }: Props = $props();
 </script>
 
-<header class="topbar">
+<header class="topbar" data-tauri-drag-region>
 	<div class="search"></div>
 
-	<div class="spacer"></div>
+	<div class="spacer" data-tauri-drag-region></div>
 
 	<ConnectionStatus {detection} />
 

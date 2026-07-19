@@ -1,6 +1,7 @@
 <script lang="ts">
-	import { gameShort, formatName } from '$lib/utils';
+	import { formatName } from '$lib/utils';
 	import { isGarbage, type Trace } from '$lib/utils/canvas';
+	import GameLogo from '$lib/components/chrome/GameLogo.svelte';
 
 	interface Session {
 		car:      string;
@@ -60,7 +61,7 @@
 <div class="card hud-card">
 	{#if session}
 		<div class="game-row">
-			<span class="logo mono">{gameShort(session.game)}</span>
+			<span class="logo"><GameLogo game={session.game} size={22} /></span>
 			<div class="names">
 				<span class="car">{formatName(session.car)}</span>
 				<span class="track">{formatName(session.track)}</span>

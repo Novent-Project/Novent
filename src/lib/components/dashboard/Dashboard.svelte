@@ -2,6 +2,7 @@
 	import { getContext } from 'svelte';
 	import type { DataState } from '$lib/state/data.svelte';
 	import { fetchTelemetry } from '$lib/api';
+	import { parseLapTime } from '$lib/utils';
 	import type { Trace } from '$lib/utils/canvas/shared';
 	import StatCard from '$lib/components/dashboard/widgets/StatCard.svelte';
 	import PeripheralsCard from '$lib/components/dashboard/widgets/PeripheralsCard.svelte';
@@ -12,9 +13,6 @@
 
 	const data = getContext<DataState>('data');
 
-	// `monthlyLaps` previously just counted every lap in `data.laps` — it
-	// wasn't filtered to the month at all despite the label. Scope it to the
-	// current calendar month using `date_time`.
 	let monthlyLaps = $derived.by(() => {
 		const now = new Date();
 		return data.laps.filter(l => {
@@ -24,8 +22,6 @@
 		}).length;
 	});
 
-	// Laps aren't guaranteed to arrive newest-first from the API, so sort
-	// explicitly rather than assuming array order.
 	let sortedLaps = $derived(
 		[...data.laps].sort((a, b) => (b.date_time ?? '').localeCompare(a.date_time ?? ''))
 	);
@@ -42,9 +38,6 @@
 			: null
 	);
 
-	// Keyed on the uuid value (not `sortedLaps`/`latest` directly) so this only
-	// refetches when the latest lap actually changes, not on every unrelated
-	// `data.laps` update.
 	let latestUuid = $derived(sortedLaps[0]?.uuid ?? null);
 	let latestTrace = $state<Trace | null>(null);
 
@@ -81,16 +74,42 @@
 
 	let topCars = $derived.by(() => {
 		if (!data.laps.length) return [];
-		const counts = new Map<string, number>();
-		for (const l of data.laps) counts.set(l.car, (counts.get(l.car) ?? 0) + 1);
+		const counts = new Map<string, { laps: number; game: string }>();
+		for (const l of data.laps) {
+			const cur = counts.get(l.car);
+			if (cur) cur.laps += 1;
+			else counts.set(l.car, { laps: 1, game: l.game });
+		}
 		return [...counts.entries()]
-			.sort((a, b) => b[1] - a[1])
+			.sort((a, b) => b[1].laps - a[1].laps)
 			.slice(0, 2)
-			.map(([car, laps]) => ({ car, laps }));
+			.map(([car, v]) => ({ car, laps: v.laps, game: v.game }));
 	});
 
-	// `Lap.date_time` is the ISO timestamp field from the API (there is no
-	// `date` field on `Lap` — see api/types.ts).
+	let activityStats = $derived.by(() => {
+		if (!data.laps.length) return null;
+		const byGame = new Map<string, number>();
+		const byTrack = new Map<string, number>();
+		let best = '';
+		let bestSec = Infinity;
+		for (const l of data.laps) {
+			byGame.set(l.game, (byGame.get(l.game) ?? 0) + 1);
+			byTrack.set(l.track, (byTrack.get(l.track) ?? 0) + 1);
+			const t = parseLapTime(l.lap_time);
+			if (t > 0 && t < bestSec) {
+				bestSec = t;
+				best = l.lap_time;
+			}
+		}
+		const top = (m: Map<string, number>) => [...m.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
+		return {
+			game:      top(byGame),
+			track:     top(byTrack),
+			totalLaps: data.laps.length,
+			bestLap:   best || '—',
+		};
+	});
+
 	let heatmapEntries = $derived.by(() => {
 		const counts = new Map<string, number>();
 		for (const l of data.laps) {
@@ -112,7 +131,7 @@
 
 	<div class="c-latest"><LatestSessionCard session={latest} trace={latestTrace} /></div>
 	<div class="c-car"><MostUsedCarCard cars={topCars} /></div>
-	<div class="c-activity"><ActivityHeatmap entries={heatmapEntries} /></div>
+	<div class="c-activity"><ActivityHeatmap entries={heatmapEntries} stats={activityStats} /></div>
 </div>
 
 <style>
@@ -134,7 +153,6 @@
 		min-width: 0;
 	}
 
-	/* Left: hero renderer, spans all three rows across the first three columns */
 	.hero {
 		grid-column: 1 / 4;
 		grid-row: 1 / 4;
@@ -145,7 +163,6 @@
 		overflow: hidden;
 	}
 
-	/* Right: stat pill + peripherals on top, then the two metric cards, then activity */
 	.c-laps        { grid-column: 4; grid-row: 1; display: flex; }
 	.c-peripherals { grid-column: 5; grid-row: 1; }
 	.c-latest      { grid-column: 4; grid-row: 2; }

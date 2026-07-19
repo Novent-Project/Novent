@@ -6,6 +6,16 @@
   "app": {
     "windows": [
       {
+        "title": "Novent",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true,
+        "backgroundColor": "#08090b",
+        "decorations": false,
         "devtools": true
       }
     ]

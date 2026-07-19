@@ -20,27 +20,18 @@
 	let pbH = $state(0);
 	let radius = $state(0);
 
-	// hud-card's border-radius isn't defined in this file, so read the real
-	// computed value rather than guessing a px number that might drift out
-	// of sync with the shared card style.
 	$effect(() => {
 		if (!playbarEl) return;
 		const r = parseFloat(getComputedStyle(playbarEl).borderRadius);
 		if (!Number.isNaN(r)) radius = r;
 	});
 
-	// Inset stroke by half its width so it sits crisply inside the card edge
-	// rather than getting clipped by the card's own rounded corners.
 	const STROKE = 2.25;
 	let inset = $derived(STROKE / 2);
 	let rectW = $derived(Math.max(pbW - STROKE, 0));
 	let rectH = $derived(Math.max(pbH - STROKE, 0));
 	let rectR = $derived(Math.max(radius - inset, 0));
 
-	// Explicit "top cap" path — left corner arc, top straight, right corner
-	// arc — rather than relying on where a plain <rect>'s path happens to
-	// start/stop. This guarantees the progress stroke always ends mid-curve
-	// cleanly instead of cutting off flat partway down a straight edge.
 	let topPathD = $derived(
 		rectW && rectH
 			? `M ${inset},${inset + rectR} A ${rectR},${rectR} 0 0 1 ${inset + rectR},${inset} L ${inset + rectW - rectR},${inset} A ${rectR},${rectR} 0 0 1 ${inset + rectW},${inset + rectR}`
@@ -56,14 +47,9 @@
 			: pctClamped
 	);
 
-	// Read the thumb's position straight off the path geometry (getPointAtLength)
-	// instead of re-deriving corner trig by hand, so it's always pixel-exact
-	// wherever the dash actually ends.
 	let topPathEl = $state<SVGPathElement | null>(null);
 	let topPathLen = $state(0);
 	let thumb = $state({ x: 0, y: 0 });
-	// Measure the path once per geometry change, not per playback frame —
-	// getPointAtLength each frame is fine, but getTotalLength needn't be.
 	$effect(() => {
 		topPathD;
 		topPathLen = topPathEl ? topPathEl.getTotalLength() : 0;
@@ -77,7 +63,6 @@
 	let deltaText = $derived(`${analysis.liveDeltaValue >= 0 ? '+' : ''}${analysis.liveDeltaValue.toFixed(3)}`);
 	let distanceText = $derived(`${analysis.distanceGap >= 0 ? '+' : ''}${Math.round(analysis.distanceGap)} m`);
 
-	// ---------- expanded telemetry graphs ----------
 	const ROW_H = 40;
 
 	let expanded = $derived(graphsOpen && placement === 'bottom');
@@ -88,20 +73,11 @@
 
 	let playheadX = $derived(chartW * (pctClamped / 100));
 
-	// The primary trace's own display color, same value the map and
-	// telemetry widgets use (AnalysisState.primaryDriver.color) — kept in
-	// sync with those rather than a separate hardcoded CSS var.
 	let primaryColor = $derived(analysis.primaryDriver.color);
 	let primaryName  = $derived(analysis.driverName);
 
 	let primaryDs = $derived(analysis.dsTrace);
 
-	// Every comparison lap with its ghost currently toggled on — laps
-	// hidden via toggleGhost() (map / telemetry widgets) drop out of the
-	// chart rows and hover tooltip here too, not just the map. Label
-	// mirrors AnalysisState.compEntries' fallback ("Reference N" numbered
-	// by original position), computed before filtering so a toggled-off
-	// lap in the middle doesn't renumber the ones after it.
 	let visibleComps = $derived(
 		analysis.compLaps
 			.map((c, i) => ({ ...c, label: c.lap.player_name || `Reference ${i + 1}` }))
@@ -134,13 +110,6 @@
 		}))
 	);
 
-	// Steering has no fixed unit range (normalized vs. raw degrees depending
-	// on source), so it's auto-scaled symmetrically around zero instead of
-	// assuming 0..1 like throttle/brake, and rendered as a line only — a
-	// filled area would need a zero baseline that a signed value shouldn't
-	// implicitly get. The range now has to account for every visible
-	// comparison lap's steering, not just one, so the scale doesn't clip
-	// whichever lap happens not to be first.
 	let steerRange = $derived(symmetricRange(primaryDs?.steer ?? [], ...visibleComps.map(c => c.ds.steer)));
 	let steerPrimary = $derived(
 		primaryDs
@@ -166,28 +135,14 @@
 		if (!chartTrackEl || analysis.resolvedLapTime <= 0 || chartW <= 0) return;
 		const rect = chartTrackEl.getBoundingClientRect();
 		const mouseX = Math.min(rect.width, Math.max(0, clientX - rect.left));
-		// mouseX is a screen pixel within the (unzoomed) track box; convert it
-		// back to a local chart-space x by undoing the current pan/zoom, same
-		// as the hover math below, otherwise seeking while zoomed/panned would
-		// land on whatever the *unzoomed* fraction pointed to instead of what's
-		// actually under the cursor.
 		const originX = panX + mouseX / zoom;
 		const t = Math.min(analysis.resolvedLapTime, Math.max(0, (originX / chartW) * analysis.resolvedLapTime));
 		analysis.seek(t);
 	}
 
-	// ---------- chart pan / zoom ----------
-	// zoom/panX describe the visible window in the same local coordinate
-	// space the chart paths are plotted in (0..chartW at zoom 1). Kept as a
-	// view-only transform — never recomputes buildChartLine — so dragging
-	// and wheeling stay cheap regardless of trace resolution.
 	const ZOOM_MIN = 1;
 	const ZOOM_MAX = 20;
 
-	// Fixed row geometry, matching the CSS below (ruler height, row height,
-	// row-gap, label column width, column-gap). Used to size/position the
-	// single playhead/crosshair overlay that spans all three chart rows —
-	// hardcoded the same way `.chart-panel.open`'s max-height already is.
 	const RULER_H = 16;
 	const ROW_GAP = 8;
 	const LABEL_W = 112;
@@ -211,9 +166,6 @@
 		if (!chartTrackEl || chartW <= 0) return;
 		const rect = chartTrackEl.getBoundingClientRect();
 		const mouseX = Math.min(rect.width, Math.max(0, clientX - rect.left));
-		// Keep the point currently under the cursor fixed in place while the
-		// zoom level changes, so wheeling in/out feels anchored to the mouse
-		// rather than always zooming toward the left edge.
 		const originX = panX + mouseX / zoom;
 		const newZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom * factor));
 		zoom = newZoom;
@@ -231,22 +183,11 @@
 		panX = 0;
 	}
 
-	// ---------- hover crosshair / tooltip ----------
-	// The tooltip is now scoped to whichever row the cursor is actually
-	// over (throttle/brake/steering), not all three channels at once — each
-	// PlaybarChart row is tagged with a data-channel attribute so we can
-	// tell them apart from the shared pointer handlers on .chart-grid.
 	type Channel = 'throttle' | 'brake' | 'steer';
 	const CHANNEL_LABEL: Record<Channel, string> = { throttle: 'Throttle', brake: 'Brake', steer: 'Steering' };
 
 	let hoverTime = $state<number | null>(null);
 	let hoverChannel = $state<Channel | null>(null);
-	// Position relative to playbarEl's own box, not the viewport — a
-	// position:fixed tooltip breaks if any ancestor (e.g. a glassy hud-card
-	// with backdrop-filter) establishes its own containing block, and it'd
-	// also get clipped by .chart-panel's `overflow:hidden`. Anchoring to
-	// playbarEl (position:relative, no overflow clipping) with plain
-	// position:absolute sidesteps both problems.
 	let hoverPos = $state({ x: 0, y: 0 });
 
 	function updateHover(e: PointerEvent) {
@@ -289,9 +230,6 @@
 
 	let hoverPrimaryValue = $derived(channelValueAt(primaryDs, hoverChannel));
 
-	// One tooltip row per currently-visible comparison lap — hidden
-	// (ghost-off) laps are already excluded from `visibleComps`, so they
-	// fall out of the tooltip along with the chart line.
 	let hoverCompRows = $derived.by(() => {
 		if (!hoverChannel) return [];
 		return visibleComps
@@ -299,11 +237,6 @@
 			.filter((r): r is { color: string; name: string; value: number } => r.value !== null);
 	});
 
-	// The ruler and chart rows are both seek surfaces at any zoom level —
-	// scrubbing should never stop working just because you've zoomed in.
-	// Panning is instead an explicit gesture (shift/alt-drag, or a
-	// middle-click drag) so there's still a way to move the visible window
-	// around without giving up the ability to scrub with a plain drag.
 	function isRulerTarget(e: PointerEvent): boolean {
 		return !!(e.target as HTMLElement).closest('.ruler-track');
 	}
@@ -547,12 +480,6 @@
 					{/snippet}
 				</PlaybarChart>
 
-				<!-- Single continuous playhead/crosshair spanning all three rows,
-				     positioned above them (chart-grid is position:relative, this
-				     is absolutely placed and out of grid flow entirely, so it
-				     can't disturb the label/track column layout). Drawing one
-				     line here instead of one per row is what keeps it from
-				     visibly "breaking" across the row gaps. -->
 				<div
 					class="chart-overlay"
 					style="left:{LABEL_W + COL_GAP}px; top:{OVERLAY_TOP}px; height:{OVERLAY_HEIGHT}px"
@@ -649,9 +576,6 @@
 		opacity: 1;
 	}
 
-	/* Purely a drag surface for the top edge — all visuals come from .frame.
-	   Sits below the clusters in stacking order so it never steals clicks
-	   from the buttons where the hit-zone happens to overlap them. */
 	.scrubber {
 		position: absolute;
 		top: 0;
@@ -799,8 +723,6 @@
 		color: var(--color-text);
 	}
 
-	/* ---------- expanded telemetry graphs ---------- */
-
 	.chart-panel {
 		position: relative;
 		z-index: 2;
@@ -811,7 +733,6 @@
 	}
 
 	.chart-panel.open {
-		/* header (~26px) + ruler (~16px) + 3 rows (40px + 8px gap each) + panel padding */
 		max-height: 260px;
 	}
 
@@ -885,11 +806,6 @@
 		white-space: nowrap;
 	}
 
-	/* Single overlay spanning all three chart rows for the playhead and hover
-	   crosshair — see the template comment for why this replaced drawing
-	   them once per row. Absolutely positioned and thus entirely outside
-	   grid layout, so it can freely sit on top (z-index) without touching
-	   the label/track column sizing. */
 	.chart-overlay {
 		position: absolute;
 		right: 0;
@@ -919,14 +835,7 @@
 		vector-effect: non-scaling-stroke;
 	}
 
-	/* ---------- hover tooltip ---------- */
-
 	.hover-tooltip {
-		/* Anchored to .playbar (position:relative, no overflow clipping) using
-		   coordinates computed from playbarEl's own bounding rect — see
-		   updateHover(). A position:fixed tooltip here would silently break
-		   (wrong position, or clipped away) if any ancestor establishes its
-		   own containing block, e.g. a hud-card style using backdrop-filter. */
 		position: absolute;
 		z-index: 20;
 		transform: translate(14px, -110%);

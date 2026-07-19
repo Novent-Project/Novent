@@ -3,14 +3,15 @@
 	import DisplaySection from './sections/DisplaySection.svelte';
 
 	interface Props {
-		gamePaths: Record<string, string>;
-		appZoom:   number;
-		traceZoom: number;
+		gamePaths:   Record<string, string>;
+		appZoom:     number;
+		appZoomAuto: boolean;
+		traceZoom:   number;
 		graphPlacement: 'bottom' | 'side';
-		onClose:   () => void;
+		onClose:     () => void;
 	}
 
-	let { gamePaths = $bindable(), appZoom = $bindable(), traceZoom = $bindable(), graphPlacement = $bindable(), onClose }: Props = $props();
+	let { gamePaths = $bindable(), appZoom = $bindable(), appZoomAuto = $bindable(), traceZoom = $bindable(), graphPlacement = $bindable(), onClose }: Props = $props();
 
 	const NAV = [
 		{ id: 'game',    label: 'Game Detection' },
@@ -63,7 +64,7 @@
 				{#if activeSection === 'game'}
 					<GameDetectionSection bind:gamePaths />
 				{:else if activeSection === 'display'}
-					<DisplaySection bind:appZoom bind:traceZoom bind:graphPlacement />
+					<DisplaySection bind:appZoom bind:appZoomAuto bind:traceZoom bind:graphPlacement />
 				{/if}
 			</div>
 		</div>

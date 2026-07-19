@@ -1,6 +1,16 @@
 import type { Action } from 'svelte/action';
 
-const STORAGE_PREFIX = 'hud-pos:';
+const STORAGE_PREFIX = 'hud-pos.v2:';
+
+if (typeof localStorage !== 'undefined') {
+	try {
+		for (let i = localStorage.length - 1; i >= 0; i--) {
+			const k = localStorage.key(i);
+			if (k?.startsWith('hud-pos:')) localStorage.removeItem(k);
+		}
+	} catch {
+	}
+}
 const DRAG_THRESHOLD = 4;
 const SNAP = 10;
 const SNAP_RELEASE = 16;

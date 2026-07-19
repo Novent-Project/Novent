@@ -14,16 +14,9 @@
 		color: string;
 		line: string;
 		area?: string;
-		/** One entry per currently-visible comparison lap — was a single
-		 *  compColor/compLine pair, which meant only ever the first
-		 *  comparison lap could be drawn no matter how many were added. */
 		compLines?: CompLine[];
-		/** Horizontal zoom factor applied to the plotted content (1 = fit). */
 		zoom?: number;
-		/** Left edge of the visible window, in local (unzoomed) chart units. */
 		panX?: number;
-		/** Identifies this row for the parent's per-row hover tooltip (see
-		 *  data-channel below) — purely a hook for HudPlaybar, unused here. */
 		channel?: string;
 		midline?: boolean;
 	}
@@ -43,15 +36,6 @@
 		midline = false
 	}: Props = $props();
 
-	// All plotted content lives in one local coordinate space, 0..width,
-	// matching buildChartLine's output. Panning and zooming are just a
-	// transform on top of that — never a recompute of the path data — so
-	// this stays cheap even while dragging.
-	//
-	// Note: the playhead and hover crosshair are NOT drawn here anymore.
-	// Each row used to draw its own copy, which made a single vertical line
-	// look "broken" across the row gaps — those now live in one continuous
-	// overlay in the parent (HudPlaybar) that spans all three rows.
 	let contentTransform = $derived(`translate(${(-panX * zoom).toFixed(2)} 0) scale(${zoom} 1)`);
 </script>
 
@@ -109,8 +93,6 @@
 		display: block;
 		width: 100%;
 		height: 100%;
-		/* Zoomed/panned content can extend past the local 0..width box —
-		   clip it instead of letting it bleed into neighboring rows. */
 		overflow: hidden;
 	}
 
@@ -123,8 +105,6 @@
 		stroke-width: 1.75;
 		stroke-linejoin: round;
 		stroke-linecap: round;
-		/* Keeps stroke width visually constant under the group's horizontal
-		   scale, so zoomed-in lines don't get thinner. */
 		vector-effect: non-scaling-stroke;
 	}
 
