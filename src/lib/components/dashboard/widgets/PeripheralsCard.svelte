@@ -73,8 +73,8 @@
 
 	.grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
-		gap: 10px;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: 8px;
 	}
 
 	.item {
@@ -86,8 +86,9 @@
 	}
 
 	.orb {
-		width: 40px;
-		height: 40px;
+		width: 100%;
+		max-width: 40px;
+		aspect-ratio: 1;
 		display: flex;
 		align-items: center;
 		justify-content: center;

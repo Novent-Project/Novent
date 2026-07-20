@@ -199,7 +199,9 @@
 			grid-row: auto;
 		}
 
-		.hero { min-height: 260px; }
+		.hero { min-height: 260px; grid-column: 1 / -1; }
+		.c-laps { grid-column: 1 / -1; }
+		.c-peripherals { grid-column: 1 / -1; }
 		.c-activity { grid-column: 1 / -1; }
 	}
 </style>

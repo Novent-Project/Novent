@@ -21,15 +21,32 @@
 
 	let { analysis, map, ui }: Props = $props();
 
+	const HUD_INSETS = 44;
+	const HUD_MIN_W = 622;
+	const CHROME_H = 160;
+	const CHROME_W = 60;
+
 	let graphsOpen = $state(false);
+	let hudW = $state(0);
+	let hudH = $state(0);
+	let topStackH = $state(0);
+	let bottomStackH = $state(0);
+	let hudRequiredH = $derived(topStackH + bottomStackH + HUD_INSETS);
+	let hudScale = $derived(
+		Math.min(
+			1,
+			hudH > 0 && hudRequiredH > HUD_INSETS ? (hudH + CHROME_H) / (hudRequiredH + CHROME_H) : 1,
+			hudW > 0 ? (hudW + CHROME_W) / (HUD_MIN_W + CHROME_W) : 1
+		)
+	);
 
 </script>
 
 <div class="hud">
-	<div class="hud-main" data-drag-bounds>
+	<div class="hud-main" data-drag-bounds bind:clientWidth={hudW} bind:clientHeight={hudH}>
 		<TrackMap {analysis} {map} />
 
-		<div class="ov ov-topleft">
+		<div class="ov ov-topleft" style:zoom={hudScale} bind:clientHeight={topStackH}>
 			<div use:draggable={'session-header'}>
 				<SessionHeaderCard
 					lap={analysis.selectedLap}
@@ -51,7 +68,7 @@
 			</div>
 		</div>
 
-		<div class="ov ov-telemetry">
+		<div class="ov ov-telemetry" style:zoom={hudScale}>
 			{#if analysis.selectedLap}
 				<div class="tel-slot" use:draggable={'telemetry-primary'}>
 					<TelemetryWidget driver={analysis.primaryDriver} />
@@ -68,7 +85,7 @@
 			{/each}
 		</div>
 
-		<div class="ov ov-bottomleft">
+		<div class="ov ov-bottomleft" style:zoom={hudScale} bind:clientHeight={bottomStackH}>
 			<div use:draggable={'g-force'}>
 				<GForceWidget {analysis} />
 			</div>
@@ -77,14 +94,14 @@
 			</div>
 		</div>
 
-		<div class="ov ov-bottomcenter">
+		<div class="ov ov-bottomcenter" style:zoom={hudScale}>
 			<div use:draggable={'zoom-control'}>
 				<ZoomControl value={map.zoomLevel} min={ZOOM_UI_MIN} max={ZOOM_UI_MAX} onChange={(v) => map.setZoom(v)} />
 			</div>
 		</div>
 
 		{#if graphsOpen && ui.graphPlacement === 'side'}
-			<div class="ov ov-right" transition:fly={{ x: 380, duration: 260 }}>
+			<div class="ov ov-right" style:zoom={hudScale} transition:fly={{ x: 380, duration: 260 }}>
 				<GraphSidebar {analysis} {map} onClose={() => (graphsOpen = false)} />
 			</div>
 		{/if}

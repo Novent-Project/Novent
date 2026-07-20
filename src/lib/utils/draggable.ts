@@ -101,10 +101,28 @@ function snapAxis(start: number, size: number, edges: { flush: number[]; beside:
 export const draggable: Action<HTMLElement, DragParams> = (node, params) => {
 	let { key, persist, spawnBelow } = normalizeParams(params);
 	node.dataset.dragKey = key;
-	let offset: Point = (persist ? loadOffset(key) : null) ?? { x: 0, y: 0 };
+	let offset: Point = { x: 0, y: 0 };
+	const stored = persist ? loadOffset(key) : null;
+
+	const zf = () => {
+		const w = node.offsetWidth;
+		if (!w) return 1;
+		return node.getBoundingClientRect().width / w || 1;
+	};
 
 	const apply = () => {
-		node.style.transform = offset.x || offset.y ? `translate(${offset.x}px, ${offset.y}px)` : '';
+		if (!offset.x && !offset.y) {
+			node.style.transform = '';
+			return;
+		}
+		const s = zf();
+		node.style.transform = `translate(${offset.x / s}px, ${offset.y / s}px)`;
+	};
+
+	const persistOffset = () => {
+		if (!persist) return;
+		const s = zf();
+		saveOffset(key, { x: Math.round(offset.x / s), y: Math.round(offset.y / s) });
 	};
 
 	const measureBase = (): Base => {
@@ -237,15 +255,21 @@ export const draggable: Action<HTMLElement, DragParams> = (node, params) => {
 		if (cur.x === offset.x && cur.y === offset.y) return false;
 		offset = cur;
 		apply();
-		if (persist) saveOffset(key, offset);
+		persistOffset();
 		return true;
 	}
 
 	node.style.cursor = 'grab';
-	apply();
 	node.style.transition = IDLE_TRANSITION;
 	const raf = requestAnimationFrame(() => {
-		if (!offset.x && !offset.y && spawnBelow) {
+		if (stored && (stored.x || stored.y)) {
+			const s = zf();
+			offset = { x: stored.x * s, y: stored.y * s };
+			const base = measureBase();
+			offset = resolveCollisions(clamp(offset, base), base) ?? { x: 0, y: 0 };
+			apply();
+			persistOffset();
+		} else if (spawnBelow) {
 			const target = node
 				.closest('[data-drag-bounds]')
 				?.querySelector(`[data-drag-key="${spawnBelow}"]`);
@@ -258,11 +282,6 @@ export const draggable: Action<HTMLElement, DragParams> = (node, params) => {
 				);
 				apply();
 			}
-		} else if (offset.x || offset.y) {
-			const base = measureBase();
-			offset = resolveCollisions(clamp(offset, base), base) ?? { x: 0, y: 0 };
-			apply();
-			if (persist) saveOffset(key, offset);
 		}
 	});
 
@@ -323,7 +342,7 @@ export const draggable: Action<HTMLElement, DragParams> = (node, params) => {
 			offset = resolveCollisions(offset, dropBase) ?? clamp(startOffset, dropBase);
 			apply();
 		}
-		if (persist) saveOffset(key, offset);
+		persistOffset();
 
 		const suppress = (ce: MouseEvent) => ce.stopPropagation();
 		window.addEventListener('click', suppress, { capture: true, once: true });
@@ -334,7 +353,7 @@ export const draggable: Action<HTMLElement, DragParams> = (node, params) => {
 		if ((e.target as Element).closest(INTERACTIVE)) return;
 		offset = { x: 0, y: 0 };
 		apply();
-		if (persist) saveOffset(key, offset);
+		persistOffset();
 	}
 
 	node.addEventListener('pointerdown', onPointerDown);
@@ -350,7 +369,9 @@ export const draggable: Action<HTMLElement, DragParams> = (node, params) => {
 			persist = next.persist;
 			spawnBelow = next.spawnBelow;
 			node.dataset.dragKey = key;
-			offset = (persist ? loadOffset(key) : null) ?? { x: 0, y: 0 };
+			const s = zf();
+			const reloaded = persist ? loadOffset(key) : null;
+			offset = reloaded ? { x: reloaded.x * s, y: reloaded.y * s } : { x: 0, y: 0 };
 			apply();
 		},
 		destroy() {
