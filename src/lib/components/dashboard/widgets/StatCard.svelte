@@ -31,7 +31,11 @@
 		display: flex;
 		align-items: center;
 		gap: 12px;
+		width: 100%;
+		height: 100%;
 		padding: 14px 18px;
+		box-sizing: border-box;
+		overflow: hidden;
 	}
 
 	.orb {

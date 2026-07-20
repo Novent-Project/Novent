@@ -68,6 +68,7 @@
 	.showroom {
 		position: absolute;
 		inset: 0;
+		overflow: hidden;
 	}
 
 	.soon {

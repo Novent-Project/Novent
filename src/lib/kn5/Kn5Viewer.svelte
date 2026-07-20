@@ -38,6 +38,7 @@
 	let wireframe = $state(false);
 	let ground = $state(true);
 	let exposure = $state(1.05);
+	let panelCollapsed = $state(false);
 	// svelte-ignore state_referenced_locally -- seed only; swatches own it after mount
 	let bg = $state(background);
 
@@ -140,32 +141,46 @@
 	{/if}
 
 	{#if fileName}
-		<aside class="panel">
-			<section class="stats">
-				{#if stats}
-					<div><span>Meshes</span><b>{fmt(stats.meshes)}</b></div>
-					<div><span>Triangles</span><b>{fmt(stats.triangles)}</b></div>
-					<div><span>Materials</span><b>{fmt(stats.materials)}</b></div>
-					<div><span>Textures</span><b>{fmt(stats.textures)}</b></div>
-					<div><span>KN5 ver.</span><b>{stats.version}</b></div>
-				{/if}
-			</section>
-			<section class="controls">
-				<label class="row"><input type="checkbox" bind:checked={autoRotate} /> Auto-rotate</label>
-				<label class="row"><input type="checkbox" bind:checked={ground} /> Ground &amp; shadow</label>
-				<label class="row"><input type="checkbox" bind:checked={wireframe} /> Wireframe</label>
-				<label class="slider">
-					<span>Exposure <b>{exposure.toFixed(2)}</b></span>
-					<input type="range" min="0.3" max="2.5" step="0.05" bind:value={exposure} />
-				</label>
-				<div class="swatches">
-					{#each backgrounds as b}
-						<button class="swatch" class:active={bg === b.value} style="background:{b.value}"
-							title={b.label} aria-label={b.label} onclick={() => (bg = b.value)}></button>
-					{/each}
-				</div>
-				<button class="reset" onclick={() => viewer?.resetView()}>Reset view</button>
-			</section>
+		<aside class="panel" class:collapsed={panelCollapsed}>
+			<button
+				class="panel-toggle"
+				onclick={() => (panelCollapsed = !panelCollapsed)}
+				aria-expanded={!panelCollapsed}
+				aria-label={panelCollapsed ? 'Expand model info' : 'Minimize model info'}
+				title={panelCollapsed ? 'Expand' : 'Minimize'}
+			>
+				<svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true">
+					<path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+				</svg>
+			</button>
+
+			{#if !panelCollapsed}
+				<section class="stats">
+					{#if stats}
+						<div><span>Meshes</span><b>{fmt(stats.meshes)}</b></div>
+						<div><span>Triangles</span><b>{fmt(stats.triangles)}</b></div>
+						<div><span>Materials</span><b>{fmt(stats.materials)}</b></div>
+						<div><span>Textures</span><b>{fmt(stats.textures)}</b></div>
+						<div><span>KN5 ver.</span><b>{stats.version}</b></div>
+					{/if}
+				</section>
+				<section class="controls">
+					<label class="row"><input type="checkbox" bind:checked={autoRotate} /> Auto-rotate</label>
+					<label class="row"><input type="checkbox" bind:checked={ground} /> Ground &amp; shadow</label>
+					<label class="row"><input type="checkbox" bind:checked={wireframe} /> Wireframe</label>
+					<label class="slider">
+						<span>Exposure <b>{exposure.toFixed(2)}</b></span>
+						<input type="range" min="0.3" max="2.5" step="0.05" bind:value={exposure} />
+					</label>
+					<div class="swatches">
+						{#each backgrounds as b}
+							<button class="swatch" class:active={bg === b.value} style="background:{b.value}"
+								title={b.label} aria-label={b.label} onclick={() => (bg = b.value)}></button>
+						{/each}
+					</div>
+					<button class="reset" onclick={() => viewer?.resetView()}>Reset view</button>
+				</section>
+			{/if}
 		</aside>
 	{/if}
 
@@ -222,7 +237,16 @@
 		background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), var(--kn5-panel) 60%);
 		backdrop-filter: blur(10px) saturate(160%); -webkit-backdrop-filter: blur(10px) saturate(160%);
 		border: 1px solid var(--kn5-border); border-radius: var(--kn5-radius); padding: 14px;
-		z-index: 10; display: flex; flex-direction: column; gap: 12px; font-size: 12px; }
+		z-index: 10; display: flex; flex-direction: column; gap: 12px; font-size: 12px;
+		transition: width 0.18s ease, padding 0.18s ease, gap 0.18s ease; }
+	.panel.collapsed { width: auto; padding: 6px; gap: 0; }
+	.panel-toggle { align-self: flex-end; flex: none; width: 24px; height: 24px; display: flex;
+		align-items: center; justify-content: center; background: none; border: 1px solid var(--kn5-border-md);
+		border-radius: var(--kn5-radius-sm); color: var(--kn5-muted); cursor: pointer; padding: 0;
+		transition: color 0.15s ease, border-color 0.15s ease; }
+	.panel-toggle:hover { color: var(--kn5-accent); border-color: var(--kn5-accent); }
+	.panel-toggle svg { transition: transform 0.18s ease; }
+	.panel.collapsed .panel-toggle svg { transform: rotate(180deg); }
 	.stats { display: grid; gap: 5px; }
 	.stats div { display: flex; justify-content: space-between; }
 	.stats span { color: var(--kn5-muted); }

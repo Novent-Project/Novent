@@ -40,7 +40,6 @@
 
 	let latestUuid = $derived(sortedLaps[0]?.uuid ?? null);
 	let latestTrace = $state<Trace | null>(null);
-	let heroShot = $state<string | null>(null);
 
 	$effect(() => {
 		const uuid = latestUuid;
@@ -73,18 +72,49 @@
 		return () => { cancelled = true; };
 	});
 
-	let topCars = $derived.by(() => {
-		if (!data.laps.length) return [];
-		const counts = new Map<string, { laps: number; game: string }>();
+	function formatRelative(ms: number): string {
+		const days = Math.floor((Date.now() - ms) / 86_400_000);
+		if (days <= 0) return 'Today';
+		if (days === 1) return 'Yesterday';
+		if (days < 7) return `${days}d ago`;
+		if (days < 30) return `${Math.floor(days / 7)}w ago`;
+		return new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+	}
+
+	let topCar = $derived.by(() => {
+		if (!data.laps.length) return null;
+		const byCar = new Map<string, {
+			laps: number; game: string; tracks: Map<string, number>;
+			bestSec: number; bestLap: string; lastMs: number;
+		}>();
 		for (const l of data.laps) {
-			const cur = counts.get(l.car);
-			if (cur) cur.laps += 1;
-			else counts.set(l.car, { laps: 1, game: l.game });
+			let e = byCar.get(l.car);
+			if (!e) {
+				e = { laps: 0, game: l.game, tracks: new Map(), bestSec: Infinity, bestLap: '', lastMs: -Infinity };
+				byCar.set(l.car, e);
+			}
+			e.laps += 1;
+			e.tracks.set(l.track, (e.tracks.get(l.track) ?? 0) + 1);
+			const t = parseLapTime(l.lap_time);
+			if (t > 0 && t < e.bestSec) {
+				e.bestSec  = t;
+				e.bestLap  = l.lap_time;
+			}
+			const ms = l.date_time ? new Date(l.date_time).getTime() : NaN;
+			if (!isNaN(ms) && ms > e.lastMs) e.lastMs = ms;
 		}
-		return [...counts.entries()]
-			.sort((a, b) => b[1].laps - a[1].laps)
-			.slice(0, 2)
-			.map(([car, v]) => ({ car, laps: v.laps, game: v.game }));
+		const top = [...byCar.entries()].sort((a, b) => b[1].laps - a[1].laps)[0];
+		if (!top) return null;
+		const [car, v] = top;
+		const track = [...v.tracks.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
+		return {
+			car,
+			game:       v.game,
+			laps:       v.laps,
+			bestLap:    v.bestLap || '—',
+			track,
+			lastDriven: isFinite(v.lastMs) ? formatRelative(v.lastMs) : '—',
+		};
 	});
 
 	let activityStats = $derived.by(() => {
@@ -124,18 +154,14 @@
 
 <div class="dashboard">
 	<section class="hero hud-card">
-		<CarShowroomCard
-			car={sortedLaps[0]?.car ?? null}
-			game={sortedLaps[0]?.game ?? 'AC'}
-			onSnapshot={(shot) => (heroShot = shot)}
-		/>
+		<CarShowroomCard car={sortedLaps[0]?.car ?? null} game={sortedLaps[0]?.game ?? 'AC'} />
 	</section>
 
 	<div class="c-laps"><StatCard icon="flag" label="Monthly Laps" value={String(monthlyLaps)} /></div>
 	<div class="c-peripherals"><PeripheralsCard /></div>
 
 	<div class="c-latest"><LatestSessionCard session={latest} trace={latestTrace} /></div>
-	<div class="c-car"><MostUsedCarCard cars={topCars} heroImage={heroShot} /></div>
+	<div class="c-car"><MostUsedCarCard car={topCar} /></div>
 	<div class="c-activity"><ActivityHeatmap entries={heatmapEntries} stats={activityStats} /></div>
 </div>
 

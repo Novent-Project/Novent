@@ -68,13 +68,21 @@
 		display: flex;
 		flex-direction: column;
 		justify-content: center;
+		width: 100%;
+		height: 100%;
 		padding: 14px 20px;
+		box-sizing: border-box;
+		overflow: hidden;
 	}
 
 	.grid {
 		display: grid;
 		grid-template-columns: repeat(4, minmax(0, 1fr));
+<<<<<<< Updated upstream
 		gap: 8px;
+=======
+		gap: 10px;
+>>>>>>> Stashed changes
 	}
 
 	.item {

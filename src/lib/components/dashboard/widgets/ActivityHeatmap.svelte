@@ -1,15 +1,10 @@
 <script lang="ts">
-	import { formatName, gameShort } from '$lib/utils';
-	import GameLogo from '$lib/components/chrome/GameLogo.svelte';
-
 	interface Entry {
 		date:  string;
 		value: number;
 	}
 
 	interface Stats {
-		game:      string;
-		track:     string;
 		totalLaps: number;
 		bestLap:   string;
 	}
@@ -23,7 +18,9 @@
 	let { entries = [], weeks = 18, stats = null }: Props = $props();
 
 	const GAP = 3;
-	const MAX_CELL = 12;
+	const MIN_CELL = 6;
+	const MAX_CELL = 22;
+	const MIN_WEEKS = 20;
 	const MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 	function toKey(d: Date) {
@@ -33,11 +30,21 @@
 	let gridW = $state(0);
 	let gridH = $state(0);
 
-	let cellSize = $derived(gridH > 0 ? Math.min(MAX_CELL, (gridH - GAP * 6) / 7) : 0);
+	// Cell size is driven by the available height (7 rows) so the grid fills
+	// the card instead of leaving dead space above the footer. It's only
+	// capped by width when that would push the week count below a readable
+	// minimum — otherwise more weeks are simply added to use the full width.
+	let cellSize = $derived.by(() => {
+		if (gridH <= 0) return 0;
+		const byHeight = Math.min(MAX_CELL, (gridH - GAP * 6) / 7);
+		if (gridW <= 0) return Math.max(MIN_CELL, byHeight);
+		const byWidth = gridW / MIN_WEEKS - GAP;
+		return Math.max(MIN_CELL, Math.min(byHeight, byWidth));
+	});
 
 	let effectiveWeeks = $derived(
 		cellSize > 0 && gridW > 0
-			? Math.max(4, Math.floor((gridW + GAP) / (cellSize + GAP)))
+			? Math.max(1, Math.floor((gridW + GAP) / (cellSize + GAP)))
 			: weeks
 	);
 
@@ -122,14 +129,6 @@
 			{#if stats}
 				<div class="stats">
 					<div class="stat">
-						<span class="stat-label">Favorite Game</span>
-						<span class="stat-value game"><GameLogo game={stats.game} size={15} />{gameShort(stats.game)}</span>
-					</div>
-					<div class="stat">
-						<span class="stat-label">Favorite Track</span>
-						<span class="stat-value">{formatName(stats.track)}</span>
-					</div>
-					<div class="stat">
 						<span class="stat-label">Total Laps</span>
 						<span class="stat-value mono">{stats.totalLaps}</span>
 					</div>
@@ -160,16 +159,22 @@
 		display: flex;
 		flex-direction: column;
 		padding: 16px 20px;
+		width: 100%;
 		height: 100%;
 		min-height: 0;
+		min-width: 0;
+		box-sizing: border-box;
+		overflow: hidden;
 	}
 
 	.heatmap {
 		flex: 1;
 		min-height: 0;
+		min-width: 0;
 		display: flex;
 		flex-direction: column;
 		gap: 4px;
+		overflow: hidden;
 	}
 
 	.months {
@@ -189,10 +194,13 @@
 	.grid {
 		flex: 1;
 		min-height: 0;
+		min-width: 0;
+		max-width: 100%;
 		display: grid;
 		gap: 3px;
 		justify-content: start;
 		align-content: start;
+		overflow: hidden;
 	}
 
 	.col {
@@ -251,12 +259,6 @@
 		font-size: 13px;
 		font-weight: 600;
 		color: var(--color-text);
-	}
-
-	.stat-value.game {
-		display: flex;
-		align-items: center;
-		gap: 6px;
 	}
 
 	.legend {

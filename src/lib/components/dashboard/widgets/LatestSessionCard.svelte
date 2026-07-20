@@ -19,13 +19,23 @@
 	let { session = null, trace = null }: Props = $props();
 
 	const VB_W = 200;
-	const VB_H = 90;
+	const FALLBACK_VB_H = 90;
 	const PAD  = 8;
 	const MAX_POINTS = 220;
 	const FALLBACK_PATH =
 		'M20 60 C10 40 30 22 55 26 C78 30 70 52 92 54 C120 57 118 30 140 28 C168 26 182 44 172 60 C164 73 140 74 120 68 C96 61 60 78 40 72 C26 68 24 66 20 60 Z';
 
-	function buildOutlinePath(t: Trace | null): string | null {
+	let traceW = $state(0);
+	let traceH = $state(0);
+
+	// Match the viewBox aspect ratio to the actual rendered box so the
+	// racing line fills the available area instead of being letterboxed
+	// inside a fixed 200x90 frame.
+	let vbH = $derived(
+		traceW > 0 && traceH > 0 ? Math.max(50, Math.round(VB_W * (traceH / traceW))) : FALLBACK_VB_H
+	);
+
+	function buildOutlinePath(t: Trace | null, vbHeight: number): string | null {
 		if (!t || !t.worldX?.length) return null;
 
 		let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
@@ -41,9 +51,9 @@
 
 		const spanX = maxX - minX || 1;
 		const spanZ = maxZ - minZ || 1;
-		const scale = Math.min((VB_W - PAD * 2) / spanX, (VB_H - PAD * 2) / spanZ);
+		const scale = Math.min((VB_W - PAD * 2) / spanX, (vbHeight - PAD * 2) / spanZ);
 		const offsetX = VB_W / 2 - ((minX + maxX) / 2) * scale;
-		const offsetY = VB_H / 2 + ((minZ + maxZ) / 2) * scale;
+		const offsetY = vbHeight / 2 + ((minZ + maxZ) / 2) * scale;
 
 		const step = Math.max(1, Math.floor(pts.length / MAX_POINTS));
 		let d = '';
@@ -55,7 +65,7 @@
 		return d + ' Z';
 	}
 
-	let outlinePath = $derived(buildOutlinePath(trace) ?? FALLBACK_PATH);
+	let outlinePath = $derived(buildOutlinePath(trace, vbH) ?? FALLBACK_PATH);
 </script>
 
 <div class="card hud-card">
@@ -68,9 +78,11 @@
 			</div>
 		</div>
 
-		<svg class="trace" viewBox="0 0 {VB_W} {VB_H}" fill="none" aria-hidden="true">
-			<path d={outlinePath} stroke="var(--color-subtle)" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
-		</svg>
+		<div class="trace-box" bind:clientWidth={traceW} bind:clientHeight={traceH}>
+			<svg class="trace" viewBox="0 0 {VB_W} {vbH}" fill="none" aria-hidden="true" preserveAspectRatio="xMidYMid meet">
+				<path d={outlinePath} stroke="var(--color-subtle)" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+			</svg>
+		</div>
 
 		<dl class="stats">
 			<div><dt>Type</dt><dd>{session.type ?? '—'}</dd></div>
@@ -79,7 +91,7 @@
 		</dl>
 	{:else}
 		<div class="empty">
-			<svg viewBox="0 0 {VB_W} {VB_H}" fill="none" aria-hidden="true">
+			<svg viewBox="0 0 {VB_W} {FALLBACK_VB_H}" fill="none" aria-hidden="true">
 				<path d={FALLBACK_PATH} stroke="var(--color-subtle)" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
 			</svg>
 			<span class="empty-title">No sessions yet</span>
@@ -93,7 +105,11 @@
 		display: flex;
 		flex-direction: column;
 		gap: 14px;
+		width: 100%;
+		height: 100%;
 		padding: 18px 20px;
+		box-sizing: border-box;
+		overflow: hidden;
 	}
 
 	.game-row {
@@ -123,10 +139,17 @@
 	.car   { font-size: 14px; font-weight: 600; color: var(--color-text); }
 	.track { font-size: 12px; color: var(--color-muted); }
 
-	.trace {
+	.trace-box {
 		flex: 1;
 		min-height: 60px;
+		min-width: 0;
 		width: 100%;
+	}
+
+	.trace {
+		display: block;
+		width: 100%;
+		height: 100%;
 	}
 
 	.stats {

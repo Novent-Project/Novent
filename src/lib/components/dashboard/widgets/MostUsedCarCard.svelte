@@ -3,50 +3,59 @@
 	import Icon from '$lib/components/chrome/Icon.svelte';
 	import GameLogo from '$lib/components/chrome/GameLogo.svelte';
 
-	interface CarUsage {
-		car:   string;
-		laps:  number;
-		game?: string;
+	interface CarSpotlight {
+		car:         string;
+		laps:        number;
+		game?:       string;
+		bestLap?:    string;
+		track?:      string;
+		lastDriven?: string;
 	}
 
 	interface Props {
-		cars?: CarUsage[];
+		car?:       CarSpotlight | null;
 		heroImage?: string | null;
 	}
 
-	let { cars = [], heroImage = null }: Props = $props();
-
-	let maxLaps = $derived(Math.max(1, ...cars.map(c => c.laps)));
+	let { car = null, heroImage = null }: Props = $props();
 </script>
 
 <div class="card hud-card">
-	{#if cars.length}
+	{#if car}
 		{#if heroImage}
-			<img class="hero hero-img" src={heroImage} alt="Side profile of {formatName(cars[0].car)}" />
+			<img class="hero hero-img" src={heroImage} alt="Side profile of {formatName(car.car)}" />
 		{:else}
 			<div class="placeholder hero" aria-hidden="true">
 				<Icon name="car" size={32} />
 			</div>
 		{/if}
 
-		<ul class="list">
-			{#each cars as c (c.car)}
-				<li class="row">
-					<span class="placeholder thumb thumb--logo" aria-hidden="true">
-						<GameLogo game={c.game ?? 'AC'} size={24} />
-					</span>
+		<div class="identity">
+			<span class="logo"><GameLogo game={car.game ?? 'AC'} size={20} /></span>
+			<div class="titles">
+				<span class="name">{formatName(car.car)}</span>
+				<span class="tag">Most driven car</span>
+			</div>
+		</div>
 
-					<div class="info">
-						<span class="name">{formatName(c.car)}</span>
-						<div class="bar-track">
-							<div class="bar-fill" style="width: {(c.laps / maxLaps) * 100}%;"></div>
-						</div>
-					</div>
-
-					<span class="laps mono">{c.laps} lap{c.laps === 1 ? '' : 's'}</span>
-				</li>
-			{/each}
-		</ul>
+		<dl class="stats">
+			<div class="stat">
+				<dt>Laps</dt>
+				<dd class="mono">{car.laps}</dd>
+			</div>
+			<div class="stat">
+				<dt>Best Lap</dt>
+				<dd class="mono">{car.bestLap ?? '—'}</dd>
+			</div>
+			<div class="stat">
+				<dt>Top Track</dt>
+				<dd>{car.track ? formatName(car.track) : '—'}</dd>
+			</div>
+			<div class="stat">
+				<dt>Last Driven</dt>
+				<dd>{car.lastDriven ?? '—'}</dd>
+			</div>
+		</dl>
 	{:else}
 		<div class="empty">
 			<span class="placeholder thumb thumb--empty" aria-hidden="true">
@@ -62,8 +71,12 @@
 	.card {
 		display: flex;
 		flex-direction: column;
-		justify-content: center;
+		gap: 12px;
+		width: 100%;
+		height: 100%;
 		padding: 18px 20px;
+		box-sizing: border-box;
+		overflow: hidden;
 	}
 
 	.placeholder {
@@ -77,8 +90,9 @@
 
 	.hero {
 		width: 100%;
-		height: 150px;
-		margin-bottom: 12px;
+		flex: 1 1 120px;
+		min-height: 56px;
+		max-height: 140px;
 	}
 
 	.hero-img {
@@ -91,70 +105,82 @@
 		box-sizing: border-box;
 	}
 
-	.list {
-		list-style: none;
-		margin: 0;
-		padding: 0;
-		display: flex;
-		flex-direction: column;
-		gap: 12px;
-	}
-
-	.row {
+	.identity {
+		flex: 0 0 auto;
 		display: flex;
 		align-items: center;
-		gap: 14px;
-		padding: 12px;
-		border-radius: var(--radius-sm);
-		background: var(--card-bg);
-		border: 1px solid var(--color-border);
-	}
-
-	.thumb {
-		flex: 0 0 auto;
-		width: 48px;
-		height: 48px;
-	}
-
-	.thumb--logo {
-		border-style: solid;
-		background: var(--card-bg);
-	}
-
-	.info {
-		flex: 1;
+		gap: 10px;
 		min-width: 0;
+	}
+
+	.logo {
+		flex: 0 0 auto;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 8px;
+	}
+
+	.titles {
 		display: flex;
 		flex-direction: column;
-		gap: 6px;
+		gap: 2px;
+		min-width: 0;
 	}
 
 	.name {
+		font-size: 14px;
+		font-weight: 700;
+		color: var(--color-text);
+		line-height: 1.3;
+		overflow-wrap: break-word;
+	}
+
+	.tag {
+		font-size: 10px;
+		font-weight: 600;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--color-accent);
+	}
+
+	.stats {
+		margin: 0;
+		flex: 0 1 auto;
+		min-height: 0;
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 8px;
+	}
+
+	.stat {
+		display: flex;
+		flex-direction: column;
+		gap: 3px;
+		padding: 8px 10px;
+		border-radius: var(--radius-sm);
+		background: var(--card-bg);
+		border: 1px solid var(--color-border);
+		min-width: 0;
+	}
+
+	.stat dt {
+		margin: 0;
+		font-size: 10px;
+		font-weight: 600;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--color-muted);
+	}
+
+	.stat dd {
+		margin: 0;
 		font-size: 13px;
 		font-weight: 600;
 		color: var(--color-text);
-		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
-	}
-
-	.bar-track {
-		height: 3px;
-		border-radius: var(--radius-pill);
-		background: var(--color-border);
-		overflow: hidden;
-	}
-
-	.bar-fill {
-		height: 100%;
-		border-radius: var(--radius-pill);
-		background: var(--color-accent);
-	}
-
-	.laps {
-		flex: 0 0 auto;
-		font-size: 11px;
-		color: var(--color-muted);
+		white-space: nowrap;
 	}
 
 	.empty {
