@@ -182,6 +182,8 @@
 
 <style>
 	.dashboard {
+		--card-padding: 20px;
+
 		display: grid;
 		grid-template-columns: repeat(5, minmax(0, 1fr));
 		grid-template-rows: auto minmax(0, 1.4fr) minmax(0, 1fr);

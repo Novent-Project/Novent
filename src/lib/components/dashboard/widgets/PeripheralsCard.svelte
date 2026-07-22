@@ -70,7 +70,7 @@
 		justify-content: center;
 		width: 100%;
 		height: 100%;
-		padding: 14px 20px;
+		padding: var(--card-padding, 20px);
 		box-sizing: border-box;
 		overflow: hidden;
 	}

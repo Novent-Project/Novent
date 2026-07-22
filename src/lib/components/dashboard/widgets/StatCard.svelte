@@ -33,7 +33,7 @@
 		gap: 12px;
 		width: 100%;
 		height: 100%;
-		padding: 14px 18px;
+		padding: var(--card-padding, 20px);
 		box-sizing: border-box;
 		overflow: hidden;
 	}
@@ -63,6 +63,9 @@
 	.label {
 		font-size: 12px;
 		color: var(--color-muted);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
 	.value {
@@ -70,5 +73,8 @@
 		font-weight: 700;
 		color: var(--color-text);
 		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 </style>

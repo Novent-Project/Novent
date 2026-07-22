@@ -79,9 +79,10 @@
 		gap: 12px;
 		width: 100%;
 		height: 100%;
-		padding: 18px 20px;
+		padding: var(--card-padding, 20px);
 		box-sizing: border-box;
-		overflow: hidden;
+		overflow-x: hidden;
+		overflow-y: auto;
 	}
 
 	.placeholder {
@@ -95,15 +96,16 @@
 
 	.hero {
 		width: 100%;
-		flex: 1 1 120px;
-		min-height: 56px;
+		flex: 1 1 100px;
+		min-height: 0;
 		max-height: 140px;
 	}
 
 	.rear {
 		width: 100%;
-		flex: 2 1 160px;
-		min-height: 72px;
+		flex: 1.6 1 130px;
+		min-height: 0;
+		max-height: 180px;
 	}
 
 	.hero-img {
@@ -158,8 +160,7 @@
 
 	.stats {
 		margin: 0;
-		flex: 0 1 auto;
-		min-height: 0;
+		flex: 0 0 auto;
 		display: grid;
 		grid-template-columns: 1fr 1fr;
 		gap: 8px;

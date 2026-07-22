@@ -104,7 +104,7 @@
 		gap: 14px;
 		width: 100%;
 		height: 100%;
-		padding: 18px 20px;
+		padding: var(--card-padding, 20px);
 		box-sizing: border-box;
 		overflow: hidden;
 	}

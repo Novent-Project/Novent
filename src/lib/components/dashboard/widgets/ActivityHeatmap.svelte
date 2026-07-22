@@ -154,7 +154,7 @@
 	.card {
 		display: flex;
 		flex-direction: column;
-		padding: 16px 20px;
+		padding: var(--card-padding, 20px);
 		width: 100%;
 		height: 100%;
 		min-height: 0;
