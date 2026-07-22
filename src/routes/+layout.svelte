@@ -15,7 +15,18 @@
 
   onMount(() => {
     data.start();
-    return () => data.destroy();
+
+    let unsub: (() => void) | null = null;
+    const watchDpr = () => {
+      unsub?.();
+      const current = matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+      const onChange = () => { data.refreshMonitorZoom(); watchDpr(); };
+      current.addEventListener('change', onChange);
+      unsub = () => current.removeEventListener('change', onChange);
+    };
+    watchDpr();
+
+    return () => { data.destroy(); unsub?.(); };
   });
 
   $effect(() => {

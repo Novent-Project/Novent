@@ -14,7 +14,17 @@ const APP_ZOOM_AUTO_KEY    = 'novent:app-zoom-auto';
 
 function computeMonitorZoom(): number {
 	if (typeof window === 'undefined' || !window.screen?.width) return APP_ZOOM_DEFAULT;
-	return clampAppZoom(Math.min(window.screen.width / 1920, window.screen.height / 1080));
+
+	// window.screen.width/height report *logical* (OS-scaled) pixels, which vary
+	// by the user's OS display-scaling setting even on identical physical monitors.
+	// Multiplying back through devicePixelRatio recovers the true physical pixel
+	// count, so 100% zoom lands on the same relative size on any screen with the
+	// same physical resolution/aspect ratio, regardless of each machine's OS scale.
+	const dpr = window.devicePixelRatio || 1;
+	const physicalWidth  = window.screen.width  * dpr;
+	const physicalHeight = window.screen.height * dpr;
+
+	return clampAppZoom(Math.min(physicalWidth / 1920, physicalHeight / 1080));
 }
 
 function loadStoredAppZoom(): number {

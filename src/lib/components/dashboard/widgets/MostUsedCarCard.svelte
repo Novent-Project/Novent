@@ -13,18 +13,22 @@
 	}
 
 	interface Props {
-		car?:       CarSpotlight | null;
-		heroImage?: string | null;
-		rearImage?: string | null;
+		car?:        CarSpotlight | null;
+		heroImage?:  string | null;
+		rearImage?:  string | null;
+		heroScale?:  number;
+		rearScale?:  number;
 	}
 
-	let { car = null, heroImage = null, rearImage = null }: Props = $props();
+	let { car = null, heroImage = null, rearImage = null, heroScale = 1, rearScale = 1 }: Props = $props();
 </script>
 
 <div class="card hud-card">
 	{#if car}
 		{#if heroImage}
-			<img class="hero hero-img" src={heroImage} alt="Side profile of {formatName(car.car)}" />
+			<div class="hero frame">
+				<img class="hero-img" style:transform="scale({heroScale})" src={heroImage} alt="Side profile of {formatName(car.car)}" />
+			</div>
 		{:else}
 			<div class="placeholder hero" aria-hidden="true">
 				<Icon name="car" size={32} />
@@ -32,7 +36,9 @@
 		{/if}
 
 		{#if rearImage}
-			<img class="rear hero-img" src={rearImage} alt="Rear three-quarter view of {formatName(car.car)}" />
+			<div class="rear frame">
+				<img class="hero-img" style:transform="scale({rearScale})" src={rearImage} alt="Rear three-quarter view of {formatName(car.car)}" />
+			</div>
 		{/if}
 
 		<div class="identity">
@@ -108,14 +114,24 @@
 		max-height: 180px;
 	}
 
-	.hero-img {
-		display: block;
-		object-fit: contain;
+	.frame {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		overflow: hidden;
 		border-radius: var(--radius-sm);
 		border: 1px solid var(--color-border);
 		background: var(--card-bg);
 		padding: 6px 10px;
 		box-sizing: border-box;
+	}
+
+	.hero-img {
+		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: contain;
+		transform-origin: center;
 	}
 
 	.identity {
