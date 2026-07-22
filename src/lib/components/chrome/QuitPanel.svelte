@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getCurrentWindow } from '@tauri-apps/api/window';
 	import { invoke } from '@tauri-apps/api/core';
+	import { loadRememberFlag, setRememberFlag, setRememberedQuitAction } from '$lib/utils/quitChoice';
 
 	interface Props {
 		onClose: () => void;
@@ -8,7 +9,15 @@
 
 	let { onClose }: Props = $props();
 
+	let remember = $state(loadRememberFlag());
+
+	function toggleRemember() {
+		remember = !remember;
+		setRememberFlag(remember);
+	}
+
 	async function minimizeToTray() {
+		if (remember) setRememberedQuitAction('tray');
 		try {
 			await getCurrentWindow().hide();
 		} catch {
@@ -17,6 +26,7 @@
 	}
 
 	async function quitApp() {
+		if (remember) setRememberedQuitAction('quit');
 		try {
 			await invoke('quit');
 		} catch {
@@ -33,37 +43,29 @@
 
 <div class="quit-overlay" onclick={(e) => { if (e.target === e.currentTarget) onClose(); }} role="presentation">
 	<div class="quit-panel" role="dialog" aria-modal="true" aria-label="Quit Novent" tabindex="-1">
-		<h2>Quit Novent?</h2>
-		<p>You can keep it running quietly in the background, or close it completely.</p>
+		<h2>Close Novent?</h2>
+		<p>Choose how the app should exit.</p>
 
 		<div class="quit-actions">
 			<button class="quit-option" onclick={minimizeToTray}>
-				<div class="option-icon">
-					<svg viewBox="0 0 16 16" fill="none">
-						<rect x="2" y="3" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.3" />
-						<path d="M5 13.5H11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
-					</svg>
-				</div>
-				<div class="option-copy">
-					<span class="option-title">Minimize to Tray</span>
-					<span class="option-sub">Keep running in the background</span>
-				</div>
+				<span class="option-title">Minimize to Tray</span>
+				<span class="option-sub">Keep running in the background</span>
 			</button>
 
 			<button class="quit-option danger" onclick={quitApp}>
-				<div class="option-icon">
-					<svg viewBox="0 0 16 16" fill="none">
-						<path d="M3 3L13 13M13 3L3 13" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
-					</svg>
-				</div>
-				<div class="option-copy">
-					<span class="option-title">Quit</span>
-					<span class="option-sub">Close the app completely</span>
-				</div>
+				<span class="option-title">Quit</span>
+				<span class="option-sub">Stop Novent entirely</span>
 			</button>
 		</div>
 
-		<button class="cancel" onclick={onClose}>Cancel</button>
+		<div class="divider"></div>
+
+		<button class="remember-row" onclick={toggleRemember}>
+			<span class="toggle" class:on={remember} aria-hidden="true">
+				<span class="knob"></span>
+			</span>
+			<span class="remember-label">Remember my choice</span>
+		</button>
 	</div>
 </div>
 
@@ -75,117 +77,167 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: rgba(0, 0, 0, 0.5);
-		backdrop-filter: blur(2px);
+		background: rgba(0,0,0,0.55);
+		backdrop-filter: blur(3px);
+		animation: fade-in 0.15s ease;
 	}
 
 	.quit-panel {
-		width: 340px;
-		padding: 24px;
-		border-radius: var(--radius-card);
-		background: var(--color-panel);
-		border: 1px solid var(--card-border);
-		box-shadow: var(--card-shadow);
+		width: 320px;
+		padding: 20px;
+		border-radius: 14px;
+		background: #101013;
+		box-shadow:
+			0 0 0 1px rgba(255,255,255,0.07),
+			0 0 0 1px rgba(16,185,129,0.15) inset,
+			0 0 40px -8px rgba(16,185,129,0.12),
+			0 24px 60px -12px rgba(0,0,0,0.6);
+		animation: rise-in 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+		font-family: var(--font-mono);
+		position: relative;
+		overflow: hidden;
+	}
+
+	.quit-panel::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 2px;
+		background: linear-gradient(90deg, transparent, #6ee7b7, transparent);
+		opacity: 0.7;
+	}
+
+	@keyframes fade-in {
+		from { opacity: 0; }
+		to   { opacity: 1; }
+	}
+
+	@keyframes rise-in {
+		from { opacity: 0; transform: translateY(6px) scale(0.98); }
+		to   { opacity: 1; transform: translateY(0) scale(1); }
 	}
 
 	h2 {
-		margin: 0 0 6px;
+		margin: 0 0 4px;
 		font-size: 16px;
 		font-weight: 700;
+		font-family: var(--font-mono);
 		color: #fff;
 	}
 
 	p {
-		margin: 0 0 20px;
-		font-size: 13px;
-		line-height: 1.5;
-		color: var(--color-muted);
+		margin: 0 0 16px;
+		font-size: 12px;
+		font-family: var(--font-mono);
+		color: rgba(255,255,255,0.35);
 	}
 
 	.quit-actions {
 		display: flex;
 		flex-direction: column;
 		gap: 8px;
-		margin-bottom: 14px;
 	}
 
 	.quit-option {
 		display: flex;
-		align-items: center;
-		gap: 12px;
+		flex-direction: column;
+		gap: 2px;
 		width: 100%;
-		padding: 12px;
-		border-radius: var(--radius-sm);
-		border: 1px solid var(--card-border);
-		background: var(--card-bg);
+		padding: 10px 12px;
+		border-radius: 8px;
+		border: 1px solid rgba(255,255,255,0.08);
+		background: rgba(255,255,255,0.02);
 		cursor: pointer;
 		text-align: left;
 		transition: background 0.12s ease, border-color 0.12s ease;
 	}
 
 	.quit-option:hover {
-		background: var(--card-bg-hover);
-		border-color: var(--color-accent-border);
+		background: rgba(255,255,255,0.045);
+		border-color: rgba(255,255,255,0.16);
+	}
+
+	.quit-option .option-title {
+		font-size: 13px;
+		font-weight: 600;
+		font-family: var(--font-mono);
+		color: #fff;
+	}
+
+	.quit-option .option-sub {
+		font-size: 11px;
+		font-family: var(--font-mono);
+		color: rgba(255,255,255,0.35);
+	}
+
+	.quit-option.danger {
+		border-color: rgba(239,68,68,0.35);
+		background: rgba(239,68,68,0.05);
+	}
+
+	.quit-option.danger .option-title {
+		color: #f0a3a3;
+	}
+
+	.quit-option.danger .option-sub {
+		color: rgba(240,163,163,0.6);
 	}
 
 	.quit-option.danger:hover {
-		border-color: rgba(239, 68, 68, 0.35);
-		background: rgba(239, 68, 68, 0.08);
+		border-color: rgba(239,68,68,0.55);
+		background: rgba(239,68,68,0.09);
 	}
 
-	.option-icon {
+	.divider {
+		height: 1px;
+		background: rgba(255,255,255,0.08);
+		margin: 14px 0 12px;
+	}
+
+	.remember-row {
 		display: flex;
 		align-items: center;
-		justify-content: center;
-		width: 30px;
-		height: 30px;
-		flex-shrink: 0;
-		border-radius: var(--radius-sm);
-		background: var(--color-accent-dim);
-		color: var(--color-accent);
-	}
-
-	.quit-option.danger .option-icon {
-		background: rgba(239, 68, 68, 0.12);
-		color: var(--color-red);
-	}
-
-	.option-icon svg {
-		width: 15px;
-		height: 15px;
-	}
-
-	.option-copy {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-	}
-
-	.option-title {
-		font-size: 13px;
-		font-weight: 600;
-		color: var(--color-text);
-	}
-
-	.option-sub {
-		font-size: 11px;
-		color: var(--color-muted);
-	}
-
-	.cancel {
-		width: 100%;
-		padding: 10px;
-		border-radius: var(--radius-sm);
+		gap: 10px;
 		border: none;
-		background: transparent;
-		color: var(--color-muted);
-		font-size: 13px;
+		background: none;
+		padding: 0;
 		cursor: pointer;
-		transition: color 0.12s ease, background 0.12s ease;
 	}
 
-	.cancel:hover {
-		color: var(--color-text);
-		background: var(--card-bg);
+	.toggle {
+		position: relative;
+		width: 32px;
+		height: 18px;
+		border-radius: 999px;
+		background: rgba(255,255,255,0.12);
+		transition: background 0.15s ease;
+		flex-shrink: 0;
+	}
+
+	.toggle.on {
+		background: var(--color-accent, #10b981);
+	}
+
+	.knob {
+		position: absolute;
+		top: 2px;
+		left: 2px;
+		width: 14px;
+		height: 14px;
+		border-radius: 50%;
+		background: #fff;
+		transition: transform 0.15s ease;
+	}
+
+	.toggle.on .knob {
+		transform: translateX(14px);
+	}
+
+	.remember-label {
+		font-size: 12px;
+		font-family: var(--font-mono);
+		color: rgba(255,255,255,0.4);
 	}
 </style>

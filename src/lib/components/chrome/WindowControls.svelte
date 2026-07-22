@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { getCurrentWindow } from '@tauri-apps/api/window';
+	import { invoke } from '@tauri-apps/api/core';
 	import QuitPanel from './QuitPanel.svelte';
+	import { loadRememberedQuitChoice } from '$lib/utils/quitChoice';
 
 	let quitPanelOpen = $state(false);
 
@@ -20,7 +22,24 @@
 		}
 	}
 
-	function openQuitPanel() {
+	async function openQuitPanel(e: MouseEvent) {
+		if (!e.shiftKey) {
+			const remembered = loadRememberedQuitChoice();
+			if (remembered === 'tray') {
+				try {
+					await getCurrentWindow().hide();
+				} catch {
+				}
+				return;
+			}
+			if (remembered === 'quit') {
+				try {
+					await invoke('quit');
+				} catch {
+				}
+				return;
+			}
+		}
 		quitPanelOpen = true;
 	}
 
@@ -43,7 +62,7 @@
 		</button>
 	</div>
 
-	<button class="win-btn close" onclick={openQuitPanel} aria-label="Close" title="Close">
+	<button class="win-btn close" onclick={openQuitPanel} aria-label="Close" title="Close (Shift+Click to change your remembered choice)">
 		<svg viewBox="0 0 10 10" fill="none">
 			<path d="M1.5 1.5L8.5 8.5M8.5 1.5L1.5 8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
 		</svg>
