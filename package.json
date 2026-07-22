@@ -29,6 +29,7 @@
 		"@steeze-ui/heroicons": "^2.4.2",
 		"@steeze-ui/svelte-icon": "^1.6.2",
 		"@tauri-apps/api": "^2.11.0",
+		"@tauri-apps/plugin-shell": "^2.3.5",
 		"phosphor-svelte": "^3.1.0",
 		"three": "^0.185.1"
 	}

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { slide } from 'svelte/transition';
 	import { formatName } from '$lib/utils';
-	import GameLogo from '$lib/components/chrome/GameLogo.svelte';
+	import Icon from '$lib/components/chrome/Icon.svelte';
 
 	interface LapRow {
 		uuid: string;
@@ -82,7 +82,7 @@
 									<path d="M8 1.5l1.9 3.85 4.25.62-3.07 3 .72 4.23L8 11.2 3.2 13.2l.72-4.23-3.07-3 4.25-.62z" />
 								</svg>
 							{:else}
-								<GameLogo game={session.game} size={20} />
+								<Icon game={session.game} size={20} />
 							{/if}
 						</div>
 						<div class="names">
@@ -254,7 +254,7 @@
 
 	.group.open {
 		border: 1px solid var(--color-border-md);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-md, 10px);
 		background: color-mix(in srgb, var(--card-bg) 45%, transparent);
 		margin: 10px 0;
 		overflow: hidden;
@@ -262,7 +262,7 @@
 
 	.session {
 		padding: 12px 8px;
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-md, 10px);
 		cursor: pointer;
 		transition: background 0.12s ease;
 	}
@@ -278,7 +278,7 @@
 
 	.session.open {
 		background: var(--card-bg);
-		border-radius: 0;
+		border-radius: var(--radius-md, 10px);
 		border-bottom: 1px solid var(--color-border);
 	}
 
@@ -300,6 +300,7 @@
 
 	.lap {
 		padding: 9px 8px;
+		border-radius: var(--radius-sm, 6px);
 		border-bottom: 1px solid var(--color-border);
 		background: color-mix(in srgb, var(--card-bg) 55%, transparent);
 		cursor: pointer;

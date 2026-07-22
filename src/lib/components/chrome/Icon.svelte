@@ -4,10 +4,13 @@
 
 <script lang="ts">
 	import { Icon as SteezeIcon, type IconSource } from '@steeze-ui/svelte-icon';
+	import { gameShort } from '$lib/utils';
+	import acMark from '$lib/assets/Logos/ac-mark.png';
 
 	interface Props {
 		src?: IconSource;
 		name?: CustomIconName;
+		game?: string;
 		size?: number;
 		theme?: 'outline' | 'solid' | 'mini' | 'micro';
 		class?: string;
@@ -15,7 +18,7 @@
 		opacity?: number;
 	}
 
-	let { src, name, size = 18, theme = 'solid', class: className = '', color, opacity }: Props = $props();
+	let { src, name, game, size = 18, theme = 'solid', class: className = '', color, opacity }: Props = $props();
 
 	const STROKE_RATIO = 0.0625;
 	let fixStyle = $derived(
@@ -23,9 +26,17 @@
 			(color ? ` color: ${color};` : '') +
 			(opacity !== undefined ? ` opacity: ${opacity};` : '')
 	);
+
+	let gameId = $derived(game !== undefined ? gameShort(game) : undefined);
 </script>
 
-{#if src}
+{#if game !== undefined}
+	{#if gameId === 'AC'}
+		<img class="logo" src={acMark} width={size} height={size} alt="Assetto Corsa" />
+	{:else}
+		<span class="chip" style="font-size: {Math.max(9, Math.round(size * 0.5))}px">{gameId}</span>
+	{/if}
+{:else if src}
 	<SteezeIcon {src} {theme} size="{size}px" class={`app-icon ${className}`} style={fixStyle} />
 {:else if name}
 	<svg
@@ -74,5 +85,17 @@
 <style>
 	:global(.app-icon) {
 		stroke-width: 1em;
+	}
+
+	.logo {
+		display: block;
+		width: auto;
+	}
+
+	.chip {
+		font-family: var(--font-mono);
+		font-weight: 700;
+		letter-spacing: 0.05em;
+		color: var(--color-text);
 	}
 </style>

@@ -196,19 +196,8 @@ export class Viewer {
 		const ax = Math.abs(dirX);
 		const az = Math.abs(dirZ);
 		const extent = ax * this.modelSize.z + az * this.modelSize.x;
-		// A small fixed clearance (not scaled to the object's footprint) keeps the
-		// camera outside the bounding box without disproportionately shrinking
-		// diagonal-angle shots. The old standoff — (ax*x + az*z)*0.5 — grew much
-		// larger for diagonal views than axis-aligned ones, and since it was added
-		// as flat extra camera distance *after* the FOV fit, that extra distance
-		// shrank the diagonal shot's apparent size far more than the side shot's,
-		// even once the fit margins themselves were unified.
 		const standoff = this.modelMaxDim * 0.05;
 		const y = this.modelSize.y * eyeH;
-		// Both axes use the same fit margin so the car fills the same fraction of the
-		// frame (~85%) regardless of which axis ends up binding the distance. Using
-		// different margins per axis (as before) let aspect ratio/viewing angle silently
-		// change the car's apparent scale between different snapshot types.
 		const FIT_MARGIN = 1.18;
 		const dist = Math.max(
 			(extent * 0.5 * FIT_MARGIN) / tanX,

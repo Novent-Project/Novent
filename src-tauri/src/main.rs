@@ -153,6 +153,7 @@ fn wait_for_backend(url: &str, timeout_secs: u64) -> bool {
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
         .manage(BackendProcess(Mutex::new(None)))
         .invoke_handler(tauri::generate_handler![quit])
         .setup(|app| {

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { formatName, formatDateTime } from '$lib/utils';
-	import GameLogo from '$lib/components/chrome/GameLogo.svelte';
+	import Icon from '$lib/components/chrome/Icon.svelte';
 	import type { Lap } from '$lib/api';
 
 	interface Props {
@@ -21,7 +21,7 @@
 </script>
 
 <div class="hud-card session-header">
-	<div class="logo-slot"><GameLogo {game} size={22} /></div>
+	<div class="logo-slot"><Icon {game} size={22} /></div>
 
 	<div class="body">
 		<div class="top-row">
