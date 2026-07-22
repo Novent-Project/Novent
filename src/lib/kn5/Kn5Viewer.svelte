@@ -85,6 +85,10 @@
 		return viewer?.snapshotSide() ?? null;
 	}
 
+	export function snapshotRearQuarter(): string | null {
+		return viewer?.snapshotRearQuarter() ?? null;
+	}
+
 	async function openClicked() {
 		const f = await openFile?.();
 		if (f) await load(f);
@@ -239,7 +243,7 @@
 		border: 1px solid var(--kn5-border); border-radius: var(--kn5-radius); padding: 14px;
 		z-index: 10; display: flex; flex-direction: column; gap: 12px; font-size: 12px;
 		transition: width 0.18s ease, padding 0.18s ease, gap 0.18s ease; }
-	.panel.collapsed { width: auto; padding: 6px; gap: 0; }
+	.panel.collapsed { width: auto; padding: 6px; gap: 0; border-radius: var(--kn5-radius-sm); }
 	.panel-toggle { align-self: flex-end; flex: none; width: 24px; height: 24px; display: flex;
 		align-items: center; justify-content: center; background: none; border: 1px solid var(--kn5-border-md);
 		border-radius: var(--kn5-radius-sm); color: var(--kn5-muted); cursor: pointer; padding: 0;
@@ -253,7 +257,39 @@
 	.stats b { font-variant-numeric: tabular-nums; font-family: var(--kn5-mono); font-weight: 600; }
 	.controls { display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--kn5-border); padding-top: 12px; }
 	.row { display: flex; align-items: center; gap: 8px; cursor: pointer; }
-	.row input, .slider input { accent-color: var(--kn5-accent); }
+	.slider input { accent-color: var(--kn5-accent); }
+	.row input[type='checkbox'] {
+		appearance: none;
+		width: 15px;
+		height: 15px;
+		margin: 0;
+		border-radius: 4px;
+		border: 1px solid var(--kn5-border-md);
+		background: var(--kn5-panel);
+		display: inline-grid;
+		place-content: center;
+		cursor: pointer;
+		transition: background 0.12s ease, border-color 0.12s ease;
+	}
+	.row input[type='checkbox']::before {
+		content: '';
+		width: 9px;
+		height: 9px;
+		transform: scale(0);
+		transition: transform 0.1s ease;
+		clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 82% 0%, 43% 66%);
+		background: #0b0d10;
+	}
+	.row input[type='checkbox']:hover {
+		border-color: var(--kn5-muted);
+	}
+	.row input[type='checkbox']:checked {
+		background: var(--kn5-accent);
+		border-color: var(--kn5-accent);
+	}
+	.row input[type='checkbox']:checked::before {
+		transform: scale(1);
+	}
 	.slider { display: flex; flex-direction: column; gap: 5px; }
 	.slider span { color: var(--kn5-muted); display: flex; justify-content: space-between; }
 	.slider b { color: var(--color-text, #cdd5de); font-family: var(--kn5-mono); }

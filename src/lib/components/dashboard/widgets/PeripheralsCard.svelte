@@ -78,11 +78,7 @@
 	.grid {
 		display: grid;
 		grid-template-columns: repeat(4, minmax(0, 1fr));
-<<<<<<< Updated upstream
 		gap: 8px;
-=======
-		gap: 10px;
->>>>>>> Stashed changes
 	}
 
 	.item {

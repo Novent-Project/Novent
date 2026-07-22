@@ -1,4 +1,4 @@
-import { fetchLaps, fetchStatus, fetchConfig, type Lap, type DetectionState } from '$lib/api';
+import { fetchLaps, fetchStatus, fetchConfig, setLapFavorite, type Lap, type DetectionState } from '$lib/api';
 
 const LAP_POLL_MS    = 3000;
 const STATUS_POLL_MS = 2000;
@@ -109,10 +109,23 @@ export class DataState {
 		return this.favorites.has(uuid);
 	}
 
+	#favPending = 0;
+
 	toggleFavorite(uuid: string) {
+		const fav = !this.favorites.has(uuid);
 		const next = new Set(this.favorites);
-		next.has(uuid) ? next.delete(uuid) : next.add(uuid);
+		fav ? next.add(uuid) : next.delete(uuid);
 		this.favorites = next;
+		this.#favPending++;
+		setLapFavorite(uuid, fav)
+			.catch(() => {
+				const revert = new Set(this.favorites);
+				fav ? revert.delete(uuid) : revert.add(uuid);
+				this.favorites = revert;
+			})
+			.finally(() => {
+				this.#favPending--;
+			});
 	}
 
 	async start() {
@@ -136,6 +149,9 @@ export class DataState {
 	async #pollLaps(): Promise<boolean> {
 		try {
 			this.laps = await fetchLaps();
+			if (this.#favPending === 0) {
+				this.favorites = new Set(this.laps.filter(l => l.favorite).map(l => l.uuid));
+			}
 			return true;
 		} catch {
 			return false;

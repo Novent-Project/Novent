@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { gameShort } from '$lib/utils';
-	import acLogo from '$lib/assets/Logos/ac-symbol-dark.svg';
+	import acMark from '$lib/assets/Logos/ac-mark.png';
 
 	interface Props {
 		game?: string;
@@ -13,7 +13,7 @@
 </script>
 
 {#if id === 'AC'}
-	<img class="logo" src={acLogo} height={size} alt="Assetto Corsa" />
+	<img class="logo" src={acMark} width={size} height={size} alt="Assetto Corsa" />
 {:else}
 	<span class="chip" style="font-size: {Math.max(9, Math.round(size * 0.5))}px">{id}</span>
 {/if}

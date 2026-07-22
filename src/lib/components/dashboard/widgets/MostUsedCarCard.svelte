@@ -15,9 +15,10 @@
 	interface Props {
 		car?:       CarSpotlight | null;
 		heroImage?: string | null;
+		rearImage?: string | null;
 	}
 
-	let { car = null, heroImage = null }: Props = $props();
+	let { car = null, heroImage = null, rearImage = null }: Props = $props();
 </script>
 
 <div class="card hud-card">
@@ -28,6 +29,10 @@
 			<div class="placeholder hero" aria-hidden="true">
 				<Icon name="car" size={32} />
 			</div>
+		{/if}
+
+		{#if rearImage}
+			<img class="rear hero-img" src={rearImage} alt="Rear three-quarter view of {formatName(car.car)}" />
 		{/if}
 
 		<div class="identity">
@@ -95,6 +100,12 @@
 		max-height: 140px;
 	}
 
+	.rear {
+		width: 100%;
+		flex: 2 1 160px;
+		min-height: 72px;
+	}
+
 	.hero-img {
 		display: block;
 		object-fit: contain;
@@ -107,6 +118,7 @@
 
 	.identity {
 		flex: 0 0 auto;
+		margin-top: auto;
 		display: flex;
 		align-items: center;
 		gap: 10px;

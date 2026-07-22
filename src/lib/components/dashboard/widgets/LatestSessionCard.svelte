@@ -28,9 +28,6 @@
 	let traceW = $state(0);
 	let traceH = $state(0);
 
-	// Match the viewBox aspect ratio to the actual rendered box so the
-	// racing line fills the available area instead of being letterboxed
-	// inside a fixed 200x90 frame.
 	let vbH = $derived(
 		traceW > 0 && traceH > 0 ? Math.max(50, Math.round(VB_W * (traceH / traceW))) : FALLBACK_VB_H
 	);

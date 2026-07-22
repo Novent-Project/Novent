@@ -1,33 +1,47 @@
 <script lang="ts">
-	import { gameShort, formatName } from '$lib/utils';
+	import { slide } from 'svelte/transition';
+	import { formatName } from '$lib/utils';
+	import GameLogo from '$lib/components/chrome/GameLogo.svelte';
 
-	interface SessionRow {
+	interface LapRow {
 		uuid: string;
+		date: string;
+		lapTime: string;
+		favorite: boolean;
+		label?: string;
+	}
+
+	interface SessionGroup {
+		id: string;
+		kind?: string;
 		game: string;
 		car: string;
 		track: string;
 		driver: string;
 		date: string;
-		lapTime: string;
-		favorite: boolean;
+		bestLap: string;
+		laps: LapRow[];
 	}
 
 	interface Props {
-		sessions: SessionRow[];
+		sessions: SessionGroup[];
 		onOpen: (uuid: string) => void;
 		onToggleFavorite: (uuid: string) => void;
 	}
 
 	let { sessions = [], onOpen, onToggleFavorite }: Props = $props();
 
+	let expanded = $state<string | null>(null);
+
+	function toggleSession(id: string) {
+		expanded = expanded === id ? null : id;
+	}
+
 	function handleToggle(event: MouseEvent, uuid: string) {
 		event.stopPropagation();
 		onToggleFavorite(uuid);
 	}
 
-	function handleShare(event: MouseEvent) {
-		event.stopPropagation();
-	}
 </script>
 
 <div class="page">
@@ -39,45 +53,41 @@
 		<div class="table">
 			<div class="row header">
 				<div class="col-main hud-eyebrow">Game / Car / Track</div>
-				<div class="col hud-eyebrow">
-					<span>Driver</span>
-					<svg class="caret" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-						<path d="M4 6l4 4 4-4" />
-					</svg>
-				</div>
-				<div class="col hud-eyebrow">
-					<span>Date</span>
-					<svg class="caret" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-						<path d="M4 6l4 4 4-4" />
-					</svg>
-				</div>
-				<div class="col hud-eyebrow">
-					<span>Laptime</span>
-					<svg class="caret" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-						<path d="M4 6l4 4 4-4" />
-					</svg>
-				</div>
-				<div class="col-actions hud-eyebrow">Actions</div>
+				<div class="col hud-eyebrow">Driver</div>
+				<div class="col hud-eyebrow">Date</div>
+				<div class="col hud-eyebrow">Best Lap</div>
+				<div class="col-actions hud-eyebrow">Laps</div>
 			</div>
 
-			{#each sessions as session (session.uuid)}
+			{#each sessions as session (session.id)}
+				<div class="group" class:open={expanded === session.id}>
 				<div
 					class="row session"
+					class:open={expanded === session.id}
 					role="button"
 					tabindex="0"
-					onclick={() => onOpen(session.uuid)}
+					aria-expanded={expanded === session.id}
+					onclick={() => toggleSession(session.id)}
 					onkeydown={(e) => {
 						if (e.key === 'Enter' || e.key === ' ') {
 							e.preventDefault();
-							onOpen(session.uuid);
+							toggleSession(session.id);
 						}
 					}}
 				>
 					<div class="col-main">
-						<div class="badge mono">{gameShort(session.game)}</div>
+						<div class="badge" class:fav-badge={session.kind === 'favorites'}>
+							{#if session.kind === 'favorites'}
+								<svg viewBox="0 0 16 16" fill="currentColor" stroke="none">
+									<path d="M8 1.5l1.9 3.85 4.25.62-3.07 3 .72 4.23L8 11.2 3.2 13.2l.72-4.23-3.07-3 4.25-.62z" />
+								</svg>
+							{:else}
+								<GameLogo game={session.game} size={20} />
+							{/if}
+						</div>
 						<div class="names">
-							<span class="car">{formatName(session.car)}</span>
-							<span class="track">{formatName(session.track)}</span>
+							<span class="car">{session.kind === 'favorites' ? session.car : formatName(session.car)}</span>
+							<span class="track">{session.kind === 'favorites' ? session.track : formatName(session.track)}</span>
 						</div>
 					</div>
 
@@ -95,33 +105,84 @@
 						<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
 							<path d="M4 1.5v13M4 2.5h8l-2 3 2 3H4" />
 						</svg>
-						<span class="mono">{session.lapTime || '—'}</span>
+						<span class="mono">{session.bestLap}</span>
 					</div>
 
 					<div class="col-actions">
-						<button class="icon-btn" type="button" aria-label="Share session" onclick={handleShare}>
-							<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-								<path d="M8 10.5V2.5M8 2.5L5 5.5M8 2.5l3 3M3.5 9v3.5a1 1 0 001 1h7a1 1 0 001-1V9" />
-							</svg>
-						</button>
-						<button
-							class="icon-btn star"
-							class:active={session.favorite}
-							type="button"
-							aria-label={session.favorite ? 'Remove favorite' : 'Add favorite'}
-							onclick={(e) => handleToggle(e, session.uuid)}
+						<span class="lap-count mono">{session.laps.length}</span>
+						<svg
+							class="chevron"
+							class:open={expanded === session.id}
+							viewBox="0 0 16 16"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="1.5"
 						>
-							{#if session.favorite}
-								<svg viewBox="0 0 16 16" fill="currentColor" stroke="none">
-									<path d="M8 1.5l1.9 3.85 4.25.62-3.07 3 .72 4.23L8 11.2 3.2 13.2l.72-4.23-3.07-3 4.25-.62z" />
-								</svg>
-							{:else}
-								<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-									<path d="M8 1.5l1.9 3.85 4.25.62-3.07 3 .72 4.23L8 11.2 3.2 13.2l.72-4.23-3.07-3 4.25-.62z" />
-								</svg>
-							{/if}
-						</button>
+							<path d="M4 6l4 4 4-4" stroke-linecap="round" stroke-linejoin="round" />
+						</svg>
 					</div>
+				</div>
+
+				{#if expanded === session.id}
+					<div class="laps" transition:slide={{ duration: 220 }}>
+					{#each session.laps as lap, i (lap.uuid)}
+						<div
+							class="row lap"
+							role="button"
+							tabindex="0"
+							onclick={() => onOpen(lap.uuid)}
+							onkeydown={(e) => {
+								if (e.key === 'Enter' || e.key === ' ') {
+									e.preventDefault();
+									onOpen(lap.uuid);
+								}
+							}}
+						>
+							<div class="col-main lap-main">
+								<span class="lap-index mono">{session.laps.length - i}</span>
+								<span class="lap-label">{lap.label ?? 'Lap'}</span>
+							</div>
+
+							<div class="col"></div>
+
+							<div class="col meta">
+								<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+									<rect x="2.5" y="3" width="11" height="10.5" rx="1.5" />
+									<path d="M2.5 6.5h11M5.5 1.5v2M10.5 1.5v2" />
+								</svg>
+								<span class="mono">{lap.date}</span>
+							</div>
+
+							<div class="col meta" class:fastest={lap.lapTime === session.bestLap}>
+								<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+									<path d="M4 1.5v13M4 2.5h8l-2 3 2 3H4" />
+								</svg>
+								<span class="mono">{lap.lapTime}</span>
+							</div>
+
+							<div class="col-actions">
+								<button
+									class="icon-btn star"
+									class:active={lap.favorite}
+									type="button"
+									aria-label={lap.favorite ? 'Remove favorite' : 'Add favorite'}
+									onclick={(e) => handleToggle(e, lap.uuid)}
+								>
+									{#if lap.favorite}
+										<svg viewBox="0 0 16 16" fill="currentColor" stroke="none">
+											<path d="M8 1.5l1.9 3.85 4.25.62-3.07 3 .72 4.23L8 11.2 3.2 13.2l.72-4.23-3.07-3 4.25-.62z" />
+										</svg>
+									{:else}
+										<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+											<path d="M8 1.5l1.9 3.85 4.25.62-3.07 3 .72 4.23L8 11.2 3.2 13.2l.72-4.23-3.07-3 4.25-.62z" />
+										</svg>
+									{/if}
+								</button>
+							</div>
+						</div>
+					{/each}
+					</div>
+				{/if}
 				</div>
 			{/each}
 		</div>
@@ -162,7 +223,7 @@
 
 	.row {
 		display: grid;
-		grid-template-columns: minmax(180px, 3fr) minmax(90px, 1.2fr) minmax(120px, 1.2fr) minmax(90px, 1fr) auto;
+		grid-template-columns: minmax(180px, 3fr) minmax(90px, 1.2fr) minmax(120px, 1.2fr) minmax(90px, 1fr) 88px;
 		align-items: center;
 		gap: 16px;
 		min-width: 560px;
@@ -179,12 +240,6 @@
 		gap: 6px;
 	}
 
-	.caret {
-		width: 11px;
-		height: 11px;
-		color: var(--color-subtle);
-	}
-
 	.col-actions {
 		display: flex;
 		align-items: center;
@@ -192,9 +247,22 @@
 		gap: 8px;
 	}
 
+	.group {
+		border-bottom: 1px solid var(--color-border);
+		transition: margin 0.22s ease;
+	}
+
+	.group.open {
+		border: 1px solid var(--color-border-md);
+		border-radius: var(--radius-md);
+		background: color-mix(in srgb, var(--card-bg) 45%, transparent);
+		margin: 10px 0;
+		overflow: hidden;
+	}
+
 	.session {
 		padding: 12px 8px;
-		border-bottom: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
 		cursor: pointer;
 		transition: background 0.12s ease;
 	}
@@ -206,6 +274,78 @@
 	.session:focus-visible {
 		outline: 1px solid var(--color-accent-border);
 		outline-offset: -1px;
+	}
+
+	.session.open {
+		background: var(--card-bg);
+		border-radius: 0;
+		border-bottom: 1px solid var(--color-border);
+	}
+
+	.lap-count {
+		font-size: 12px;
+		color: var(--color-muted);
+	}
+
+	.chevron {
+		width: 13px;
+		height: 13px;
+		color: var(--color-subtle);
+		transition: transform 0.15s ease;
+	}
+
+	.chevron.open {
+		transform: rotate(180deg);
+	}
+
+	.lap {
+		padding: 9px 8px;
+		border-bottom: 1px solid var(--color-border);
+		background: color-mix(in srgb, var(--card-bg) 55%, transparent);
+		cursor: pointer;
+		transition: background 0.12s ease;
+	}
+
+	.laps .lap:last-child {
+		border-bottom: none;
+	}
+
+	.lap:hover {
+		background: var(--card-bg-hover);
+	}
+
+	.lap:focus-visible {
+		outline: 1px solid var(--color-accent-border);
+		outline-offset: -1px;
+	}
+
+	.lap-main {
+		padding-left: 14px;
+	}
+
+	.lap-index {
+		flex: 0 0 auto;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 26px;
+		height: 26px;
+		border-radius: 4px;
+		background: var(--card-bg);
+		border: 1px solid var(--color-border);
+		font-size: 11px;
+		color: var(--color-muted);
+	}
+
+	.meta.fastest,
+	.meta.fastest svg,
+	.meta.fastest .mono {
+		color: var(--color-accent);
+	}
+
+	.lap-label {
+		font-size: 13px;
+		color: var(--color-text);
 	}
 
 	.col-main {
@@ -225,8 +365,17 @@
 		border-radius: var(--radius-sm);
 		background: var(--card-bg);
 		border: 1px solid var(--card-border);
-		font-size: 10px;
-		color: var(--color-muted);
+	}
+
+	.badge.fav-badge {
+		color: var(--color-accent);
+		background: var(--color-accent-dim);
+		border-color: var(--color-accent-border);
+	}
+
+	.badge.fav-badge svg {
+		width: 18px;
+		height: 18px;
 	}
 
 	.names {

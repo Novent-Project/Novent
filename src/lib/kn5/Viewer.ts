@@ -170,6 +170,14 @@ export class Viewer {
 	}
 
 	snapshotSide(width = 1280, height = 448): string | null {
+		return this.snapshotView(1, 0, width, height, 0.45);
+	}
+
+	snapshotRearQuarter(width = 1280, height = 560): string | null {
+		return this.snapshotView(0.707, -0.707, width, height, 0.55);
+	}
+
+	private snapshotView(dirX: number, dirZ: number, width: number, height: number, eyeH: number): string | null {
 		if (!this.model) return null;
 		const prevPr = this.renderer.getPixelRatio();
 		const prevAspect = this.camera.aspect;
@@ -185,12 +193,16 @@ export class Viewer {
 		this.camera.fov = 14;
 		const tanY = Math.tan((this.camera.fov * Math.PI) / 360);
 		const tanX = tanY * this.camera.aspect;
-		const y = this.modelSize.y * 0.45;
+		const ax = Math.abs(dirX);
+		const az = Math.abs(dirZ);
+		const extent = ax * this.modelSize.z + az * this.modelSize.x;
+		const standoff = (ax * this.modelSize.x + az * this.modelSize.z) * 0.5;
+		const y = this.modelSize.y * eyeH;
 		const dist = Math.max(
-			(this.modelSize.z * 0.5 * 1.12) / tanX,
+			(extent * 0.5 * 1.12) / tanX,
 			(this.modelSize.y * 0.5 * 1.3) / tanY
-		) + this.modelSize.x * 0.5;
-		this.camera.position.set(dist, y, 0);
+		) + standoff;
+		this.camera.position.set(dirX * dist, y, dirZ * dist);
 		this.camera.lookAt(0, y, 0);
 		this.camera.updateProjectionMatrix();
 		this.renderer.render(this.scene, this.camera);

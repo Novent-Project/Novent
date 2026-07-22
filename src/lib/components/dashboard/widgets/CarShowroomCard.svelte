@@ -6,7 +6,7 @@
 	let { car, game, onSnapshot }: {
 		car: string | null;
 		game: string;
-		onSnapshot?: (dataUrl: string) => void;
+		onSnapshot?: (shots: { side: string | null; rear: string | null }) => void;
 	} = $props();
 
 	let supported = $derived(game.trim().toUpperCase() === 'AC');
@@ -43,8 +43,9 @@
 			loadedInto = v;
 			await v.load({ name: formatName(target), data });
 			if (cancelled) return;
-			const shot = v.snapshotSide();
-			if (shot) onSnapshot?.(shot);
+			const side = v.snapshotSide();
+			const rear = v.snapshotRearQuarter();
+			if (side || rear) onSnapshot?.({ side, rear });
 		});
 		return () => { cancelled = true; };
 	});

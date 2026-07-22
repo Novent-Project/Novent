@@ -30,10 +30,6 @@
 	let gridW = $state(0);
 	let gridH = $state(0);
 
-	// Cell size is driven by the available height (7 rows) so the grid fills
-	// the card instead of leaving dead space above the footer. It's only
-	// capped by width when that would push the week count below a readable
-	// minimum — otherwise more weeks are simply added to use the full width.
 	let cellSize = $derived.by(() => {
 		if (gridH <= 0) return 0;
 		const byHeight = Math.min(MAX_CELL, (gridH - GAP * 6) / 7);
