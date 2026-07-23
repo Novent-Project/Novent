@@ -136,7 +136,7 @@ export function drawValueLabel(
 	label: string,
 	color: string
 ): void {
-	ctx.font = 'bold 9px monospace';
+	ctx.font = 'bold 9px "JetBrains Mono Variable", monospace';
 	const boxW = ctx.measureText(label).width + 10;
 	const boxH = 17;
 	const m    = 2;

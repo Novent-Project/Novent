@@ -81,7 +81,7 @@
 			ctx.strokeStyle = active ? '#10b981' : 'rgba(255,255,255,0.22)';
 			ctx.stroke();
 			ctx.fillStyle = active ? '#06080a' : 'rgba(255,255,255,0.55)';
-			ctx.font      = 'bold 10px ui-monospace, monospace';
+			ctx.font      = 'bold 10px "JetBrains Mono Variable", monospace';
 			ctx.textAlign = 'center';
 			ctx.textBaseline = 'middle';
 			ctx.fillText(String(s + 1), px, py + 0.5);

@@ -1,6 +1,8 @@
 <script lang="ts">
   import { setContext, onMount } from 'svelte';
   import { getCurrentWebview } from '@tauri-apps/api/webview';
+  import '@fontsource-variable/inter';
+  import '@fontsource-variable/jetbrains-mono';
   import './layout.css';
   import favicon from '$lib/assets/Novent.svg';
   import Splashscreen from '$lib/components/chrome/Splashscreen.svelte';

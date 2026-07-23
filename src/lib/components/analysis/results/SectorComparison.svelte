@@ -1,9 +1,14 @@
 <script lang="ts">
+	interface SectorRef {
+		time: string;
+		delta: number;
+		color: string;
+	}
+
 	interface Sector {
 		label: string;
 		time: string;
-		ref?: string;
-		delta?: number;
+		refs: SectorRef[];
 	}
 
 	interface Props {
@@ -13,21 +18,23 @@
 
 	let { sectors, onExpand }: Props = $props();
 
-	function deltaColor(delta: number | undefined): string {
-		if (typeof delta !== 'number') return 'var(--color-text)';
-		if (delta < 0) return 'var(--color-accent)';
-		if (delta > 0) return 'var(--color-red)';
+	let refColors = $derived(sectors[0]?.refs.map(r => r.color) ?? []);
+	let gridCols = $derived(`auto minmax(72px, 1fr)${' minmax(72px, auto)'.repeat(refColors.length)}`);
+
+	function deltaColor(delta: number): string {
+		if (delta < -0.0005) return 'var(--color-accent)';
+		if (delta > 0.0005) return 'var(--color-red)';
 		return 'var(--color-text)';
 	}
 </script>
 
 <div class="hud-card sector-comparison">
 	<div class="header">
-		<span class="title">Sector Comparison</span>
+		<span class="title">Sectors</span>
 		<button
 			type="button"
 			class="expand-btn"
-			aria-label="Expand sector comparison"
+			aria-label="Expand sectors"
 			onclick={() => onExpand?.()}
 		>
 			<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -37,28 +44,21 @@
 		</button>
 	</div>
 
-	<div class="grid">
-		<div class="col-head"></div>
-		<div class="col-head glyph">
-			<svg viewBox="0 0 16 16" fill="currentColor" stroke="none" aria-hidden="true">
-				<path
-					d="M3.2 9.1 4 6.4a1.6 1.6 0 0 1 1.5-1.1h5a1.6 1.6 0 0 1 1.5 1.1l.8 2.7a1.4 1.4 0 0 1 1 1.3v1.3a.6.6 0 0 1-.6.6H13v.4a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-.4H5v.4a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-.4h-.2a.6.6 0 0 1-.6-.6v-1.3a1.4 1.4 0 0 1 1-1.3Zm1.6-.1h6.4l-.5-1.9a.5.5 0 0 0-.5-.3H5.3a.5.5 0 0 0-.5.3ZM5 10.9a.7.7 0 1 0 0-1.4.7.7 0 0 0 0 1.4Zm6 0a.7.7 0 1 0 0-1.4.7.7 0 0 0 0 1.4Z"
-				/>
-			</svg>
-		</div>
-		<div class="col-head glyph">
-			<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-				<circle cx="8" cy="9" r="4.5" />
-				<path d="M8 6.5V9l1.6 1" />
-				<path d="M6.5 2.5h3" />
-				<path d="M8 2.5v2" />
-			</svg>
-		</div>
+	<div class="grid" style:grid-template-columns={gridCols}>
+		{#if refColors.length}
+			<div class="col-head"></div>
+			<div class="col-head dot-head"><span class="dot you"></span></div>
+			{#each refColors as color, i (i)}
+				<div class="col-head dot-head"><span class="dot" style="background: {color}"></span></div>
+			{/each}
+		{/if}
 
 		{#each sectors as sector (sector.label)}
 			<div class="label mono">{sector.label}</div>
-			<div class="mono time" style="color: {deltaColor(sector.delta)}">{sector.time}</div>
-			<div class="mono ref">{sector.ref ?? ':--.--'}</div>
+			<div class="mono time">{sector.time}</div>
+			{#each sector.refs as ref, i (i)}
+				<div class="mono time" style="color: {deltaColor(ref.delta)}">{ref.time}</div>
+			{/each}
 		{/each}
 	</div>
 </div>
@@ -107,7 +107,6 @@
 
 	.grid {
 		display: grid;
-		grid-template-columns: auto 1fr 1fr;
 		align-items: center;
 		column-gap: 12px;
 		row-gap: 4px;
@@ -119,15 +118,19 @@
 		align-items: center;
 	}
 
-	.col-head.glyph {
+	.col-head.dot-head {
 		justify-content: flex-end;
-		color: var(--color-subtle);
 		padding-bottom: 2px;
 	}
 
-	.col-head.glyph svg {
-		width: 14px;
-		height: 14px;
+	.dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+	}
+
+	.dot.you {
+		background: var(--color-accent);
 	}
 
 	.label {
@@ -139,11 +142,5 @@
 		text-align: right;
 		font-size: 12px;
 		color: var(--color-text);
-	}
-
-	.ref {
-		text-align: right;
-		font-size: 12px;
-		color: var(--color-muted);
 	}
 </style>

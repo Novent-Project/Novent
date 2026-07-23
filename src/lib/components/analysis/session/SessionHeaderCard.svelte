@@ -57,19 +57,26 @@
 				</svg>
 				<span class="mono">{dateTime}</span>
 			</span>
-			<span class="dot">•</span>
-			<span class="meta-item">
-				<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-					<path d="M6.5 9V3.5a1.5 1.5 0 0 1 3 0V9a2.5 2.5 0 1 1-3 0z" />
-				</svg>
-				<span class="mono">{airTemp ?? '—'}°C</span>
-			</span>
-			<span class="meta-item">
-				<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-					<path d="M6.5 9V3.5a1.5 1.5 0 0 1 3 0V9a2.5 2.5 0 1 1-3 0z" />
-				</svg>
-				<span class="mono">{roadTemp ?? '—'}°C</span>
-			</span>
+			{#if airTemp}
+				<span class="dot">•</span>
+				<span class="meta-item">
+					<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+						<path d="M6.5 9V3.5a1.5 1.5 0 0 1 3 0V9a2.5 2.5 0 1 1-3 0z" />
+					</svg>
+					<span class="mono">{airTemp}°C</span>
+					<span class="temp-tag">Air</span>
+				</span>
+			{/if}
+			{#if roadTemp}
+				<span class="dot">•</span>
+				<span class="meta-item">
+					<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+						<path d="M6.5 9V3.5a1.5 1.5 0 0 1 3 0V9a2.5 2.5 0 1 1-3 0z" />
+					</svg>
+					<span class="mono">{roadTemp}°C</span>
+					<span class="temp-tag">Road</span>
+				</span>
+			{/if}
 			{#if mode}
 				<span class="mode-pill">{mode}</span>
 			{/if}
@@ -179,6 +186,14 @@
 	}
 
 	.dot {
+		color: var(--color-subtle);
+	}
+
+	.temp-tag {
+		font-size: 9px;
+		font-weight: 600;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
 		color: var(--color-subtle);
 	}
 

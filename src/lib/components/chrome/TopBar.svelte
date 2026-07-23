@@ -15,14 +15,12 @@
 		open(url).catch((err) => console.error('Failed to open external URL:', err));
 	}
 
-	// --- connection status ---
 	let connLabel = $derived(
 		detection.status === 'idle'     ? 'No game detected' :
 		detection.status === 'detected' ? `${detection.game} detected` :
 		                      `${detection.game} — session active`
 	);
 
-	// --- window controls ---
 	let quitPanelOpen = $state(false);
 
 	async function minimize() {
@@ -66,7 +64,6 @@
 		quitPanelOpen = false;
 	}
 
-	// --- quit panel ---
 	let remember = $state(loadRememberFlag());
 
 	function toggleRemember() {
@@ -199,7 +196,6 @@
 		flex: 1;
 	}
 
-	/* connection status */
 	.conn {
 		display: flex;
 		align-items: center;
@@ -230,7 +226,6 @@
 		color: var(--color-text);
 	}
 
-	/* discord / github actions */
 	.actions {
 		display: flex;
 		align-items: center;
@@ -273,7 +268,6 @@
 		background: var(--color-border);
 	}
 
-	/* window controls */
 	.window-controls {
 		display: flex;
 		align-items: center;
@@ -312,7 +306,6 @@
 		color: #fff;
 	}
 
-	/* quit panel */
 	.quit-overlay {
 		position: fixed;
 		inset: 0;

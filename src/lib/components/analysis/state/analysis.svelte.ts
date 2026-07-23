@@ -29,11 +29,16 @@ export interface Standing {
 	color?:     string;
 }
 
+export interface SectorRef {
+	time:  string;
+	delta: number;
+	color: string;
+}
+
 export interface SectorRow {
-	label:  string;
-	time:   string;
-	ref?:   string;
-	delta?: number;
+	label: string;
+	time:  string;
+	refs:  SectorRef[];
 }
 
 export interface DriverTelemetry {
@@ -46,7 +51,7 @@ export interface DriverTelemetry {
 	brake:    number;
 	speed:    number;
 	gear:     number | string;
-	rpm:      number;
+	rpm:      number | string;
 }
 
 export interface CompEntry {
@@ -61,16 +66,21 @@ const DRIVER_COLOR = '#10b981';
 const COMP_COLORS = ['#e5e7eb', '#f59e0b', '#38bdf8', '#c084fc', '#fb7185', '#facc15'];
 export const MAX_COMP_LAPS = COMP_COLORS.length;
 
+function hasChannel(arr: number[]): boolean {
+	return arr.some(v => v !== 0);
+}
+
 function buildDriverTelemetry(
 	name: string, color: string, lapNum: number, lapTime: string, sample: Sample,
+	hasGear: boolean, hasRpm: boolean,
 ): DriverTelemetry {
 	return {
 		name, color, stint: 1, lap: lapNum, lapTime,
 		throttle: sample.throttle,
 		brake:    sample.brake,
 		speed:    sample.speed,
-		gear:     gearLabel(sample.gear),
-		rpm:      sample.rpm,
+		gear:     hasGear ? gearLabel(sample.gear) : '—',
+		rpm:      hasRpm ? sample.rpm : '—',
 	};
 }
 
@@ -123,6 +133,9 @@ export class AnalysisState {
 		return c && this.compIdxNow >= 0 ? sampleAt(c.trace, this.compIdxNow) : null;
 	});
 
+	primaryHasGear = $derived(hasChannel(this.currentTrace.gear));
+	primaryHasRpm  = $derived(hasChannel(this.currentTrace.rpm));
+
 	primaryDriver = $derived.by((): DriverTelemetry =>
 		buildDriverTelemetry(
 			this.driverName,
@@ -130,6 +143,8 @@ export class AnalysisState {
 			this.selectedLap?.completed_laps ?? 1,
 			this.selectedLap?.lap_time ?? '—',
 			this.primarySample,
+			this.primaryHasGear,
+			this.primaryHasRpm,
 		)
 	);
 
@@ -148,6 +163,8 @@ export class AnalysisState {
 					c.lap.completed_laps ?? 1,
 					c.lap.lap_time ?? '—',
 					sample,
+					hasChannel(c.trace.gear),
+					hasChannel(c.trace.rpm),
 				),
 			};
 		})
@@ -191,14 +208,16 @@ export class AnalysisState {
 
 	sectors = $derived.by((): SectorRow[] => {
 		if (!this.dsTrace) return [];
-		const durs    = sectorDurations(this.dsTrace);
-		const ref     = this.compLaps[0]?.ds;
-		const refDurs = ref ? sectorDurations(ref) : null;
+		const durs = sectorDurations(this.dsTrace);
+		const refs = this.compLaps.map(c => ({ durs: sectorDurations(c.ds), color: c.color }));
 		return [0, 1, 2].map(i => ({
 			label: `S${i + 1}`,
 			time:  formatSector(durs[i]),
-			ref:   refDurs ? formatSector(refDurs[i]) : undefined,
-			delta: refDurs ? durs[i] - refDurs[i] : undefined,
+			refs:  refs.map(r => ({
+				time:  formatSector(r.durs[i]),
+				delta: r.durs[i] - durs[i],
+				color: r.color,
+			})),
 		}));
 	});
 

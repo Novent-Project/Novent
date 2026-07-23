@@ -23,38 +23,41 @@
 	let { entries, candidates, onAddComparison, onRemoveComparison, maxReached = false }: Props = $props();
 
 	const rows = $derived(entries ?? []);
+	const rowScale = $derived(Math.max(0.55, Math.min(1, 3 / Math.max(rows.length, 1))));
 </script>
 
 <div class="hud-card standings">
 	{#if rows.length === 0}
 		<div class="empty mono">No other drivers</div>
 	{:else}
-		{#each rows as entry, i (entry.pos)}
-			<div class="row" class:primary={entry.isPrimary}>
-				<span class="pos mono">{entry.pos}</span>
-				<span
-					class="avatar"
-					style={entry.color ? `border-color: ${entry.color};` : ''}
-					aria-hidden="true"
-				></span>
-				<span class="name" class:strong={entry.isPrimary}>{entry.name}</span>
-				<span class="spacer"></span>
-				{#if entry.isPrimary || i === 0}
-					<span class="value mono time">{entry.time}</span>
-				{:else if entry.gap}
-					<span class="value mono gap">{entry.gap}</span>
-				{:else}
-					<span class="value mono">{entry.time}</span>
-				{/if}
-				{#if entry.uuid}
-					<button
-						class="row-remove"
-						onclick={() => onRemoveComparison(entry.uuid ?? '')}
-						aria-label="Remove comparison"
-					>×</button>
-				{/if}
-			</div>
-		{/each}
+		<div class="rows" style:zoom={rowScale}>
+			{#each rows as entry, i (entry.pos)}
+				<div class="row" class:primary={entry.isPrimary}>
+					<span class="pos mono">{entry.pos}</span>
+					<span
+						class="avatar"
+						style={entry.color ? `border-color: ${entry.color};` : ''}
+						aria-hidden="true"
+					></span>
+					<span class="name" class:strong={entry.isPrimary}>{entry.name}</span>
+					<span class="spacer"></span>
+					{#if entry.isPrimary || i === 0}
+						<span class="value mono time">{entry.time}</span>
+					{:else if entry.gap}
+						<span class="value mono gap">{entry.gap}</span>
+					{:else}
+						<span class="value mono">{entry.time}</span>
+					{/if}
+					{#if entry.uuid}
+						<button
+							class="row-remove"
+							onclick={() => onRemoveComparison(entry.uuid ?? '')}
+							aria-label="Remove comparison"
+						>×</button>
+					{/if}
+				</div>
+			{/each}
+		</div>
 	{/if}
 
 	<div class="add-row">
@@ -73,6 +76,11 @@
 		color: var(--color-muted);
 		padding: 8px 0;
 		font-size: 0.8125rem;
+	}
+
+	.rows {
+		display: flex;
+		flex-direction: column;
 	}
 
 	.row {

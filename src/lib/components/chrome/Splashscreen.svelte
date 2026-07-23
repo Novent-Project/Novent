@@ -74,7 +74,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+		font-family: var(--font-sans);
 		transition: opacity 600ms ease;
 	}
 
@@ -148,7 +148,7 @@
 		letter-spacing: 0.28em;
 		text-transform: uppercase;
 		color: rgba(255, 255, 255, 0.32);
-		font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+		font-family: var(--font-mono);
 	}
 
 	.bar {

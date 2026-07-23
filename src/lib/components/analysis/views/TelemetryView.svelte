@@ -32,13 +32,18 @@
 	let topStackH = $state(0);
 	let bottomStackH = $state(0);
 	let hudRequiredH = $derived(topStackH + bottomStackH + HUD_INSETS);
-	let hudScale = $derived(
+	let hudScaleTarget = $derived(
 		Math.min(
 			1,
 			hudH > 0 && hudRequiredH > HUD_INSETS ? (hudH + CHROME_H) / (hudRequiredH + CHROME_H) : 1,
 			hudW > 0 ? (hudW + CHROME_W) / (HUD_MIN_W + CHROME_W) : 1
 		)
 	);
+	let hudScale = $state(1);
+	$effect(() => {
+		const t = hudScaleTarget;
+		if (t === 1 || Math.abs(t - hudScale) > 0.01) hudScale = t;
+	});
 
 </script>
 
@@ -161,7 +166,8 @@
 	}
 
 	.ov-bottomleft :global(.sector-comparison) {
-		width: 258px;
+		min-width: 258px;
+		width: max-content;
 	}
 
 	.ov-bottomcenter {

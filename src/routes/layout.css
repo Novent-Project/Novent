@@ -1,6 +1,6 @@
 :root {
-	--font-sans: ui-sans-serif, system-ui, -apple-system, sans-serif;
-	--font-mono: ui-monospace, 'Cascadia Code', 'Fira Code', monospace;
+	--font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+	--font-mono: 'JetBrains Mono Variable', ui-monospace, 'Cascadia Code', monospace;
 
 	--color-bg:        #08090b;
 	--color-surface:   #0b0c0e;
@@ -49,6 +49,7 @@ html, body {
 	background: var(--color-bg);
 	color: var(--color-text);
 	font-family: var(--font-sans);
+	font-variant-numeric: tabular-nums;
 }
 
 div#svelte {
