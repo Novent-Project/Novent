@@ -2,7 +2,7 @@
 	import { formatTime, traceIndexAtTime } from '$lib/utils';
 	import { buildChartLine, symmetricRange } from '$lib/utils/chart';
 	import Icon from '$lib/components/chrome/Icon.svelte';
-	import { Play, Pause, ArrowsRightLeft } from '@steeze-ui/heroicons';
+	import { Play, Pause, ArrowsRightLeft, ArrowsPointingOut, ArrowsPointingIn } from '@steeze-ui/heroicons';
 	import PlaybarChart from '$lib/components/analysis/telemetry/PlaybarChart.svelte';
 	import type { AnalysisState } from '$lib/components/analysis/state';
 
@@ -362,23 +362,7 @@
 				aria-label={graphsOpen ? 'Hide telemetry graphs' : 'Show telemetry graphs'}
 				title={graphsOpen ? 'Hide telemetry graphs' : 'Show telemetry graphs'}
 			>
-				{#if graphsOpen}
-					<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-						<path
-							d="M6 2v3a1 1 0 0 1-1 1H2M10 2v3a1 1 0 0 0 1 1h3M6 14v-3a1 1 0 0 0-1-1H2M10 14v-3a1 1 0 0 1 1-1h3"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						/>
-					</svg>
-				{:else}
-					<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-						<path
-							d="M2 6V3a1 1 0 0 1 1-1h3M11 2h3a1 1 0 0 1 1 1v3M14 10v3a1 1 0 0 1-1 1h-3M5 14H2a1 1 0 0 1-1-1v-3"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						/>
-					</svg>
-				{/if}
+				<Icon src={graphsOpen ? ArrowsPointingIn : ArrowsPointingOut} theme="outline" size={16} />
 			</button>
 		</div>
 	</div>

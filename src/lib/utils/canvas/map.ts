@@ -339,7 +339,9 @@ export function drawMap(
 		tx - k * layer.margin + (w + 2 * layer.margin) * k >= w &&
 		ty - k * layer.margin + (h + 2 * layer.margin) * k >= h;
 
-	if (geometryDirty || (transformDirty && (!interacting || !covered)))
+	const scaleDirty = layer.scale !== scale;
+
+	if (geometryDirty || (transformDirty && (!interacting || !covered || scaleDirty)))
 	{
 		if (layer.trace !== trace) layer.diagLen = traceDiagonal(trace);
 		layer.w = w; layer.h = h; layer.dpr = dpr;

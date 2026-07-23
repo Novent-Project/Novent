@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { formatName } from '$lib/utils';
 	import Icon from '$lib/components/chrome/Icon.svelte';
-	import GameLogo from '$lib/components/chrome/GameLogo.svelte';
 
 	interface CarSpotlight {
 		car:         string;
@@ -42,7 +41,7 @@
 		{/if}
 
 		<div class="identity">
-			<span class="logo"><GameLogo game={car.game ?? 'AC'} size={20} /></span>
+			<span class="logo"><Icon game={car.game ?? 'AC'} size={20} /></span>
 			<div class="titles">
 				<span class="name">{formatName(car.car)}</span>
 				<span class="tag">Most driven car</span>
