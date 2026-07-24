@@ -2,6 +2,7 @@
 	import { page } from '$app/state';
 	import Icon from '$lib/components/chrome/Icon.svelte';
 	import { Home, ChartBar, Cog6Tooth } from '@steeze-ui/heroicons';
+	import { prefs } from '$lib/state/prefs.svelte';
 
 	const links = [
 		{ label: 'Dashboard', href: '/',         icon: Home },
@@ -45,9 +46,9 @@
 		</nav>
 	</div>
 
-	<a class="rail-slot settings" href="/analysis?settings=open" aria-label="Settings">
+	<button class="rail-slot settings" type="button" aria-label="Settings" onclick={() => (prefs.settingsOpen = true)}>
 		<Icon src={Cog6Tooth} size={18} />
-	</a>
+	</button>
 </aside>
 
 <style>
@@ -99,11 +100,14 @@
 		width: 32px;
 		height: 32px;
 		flex-shrink: 0;
+		padding: 0;
 		border-radius: var(--radius-sm);
 		color: var(--color-muted);
 		background: var(--card-bg);
 		border: 1px solid var(--card-border);
 		text-decoration: none;
+		cursor: pointer;
+		font: inherit;
 		transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
 	}
 

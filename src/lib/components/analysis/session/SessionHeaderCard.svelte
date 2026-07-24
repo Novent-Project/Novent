@@ -5,18 +5,16 @@
 
 	interface Props {
 		lap: Lap | null;
-		onPlay?: () => void;
-		onSetup?: () => void;
 	}
 
-	let { lap, onPlay, onSetup }: Props = $props();
+	let { lap }: Props = $props();
 
 	let car      = $derived(lap?.car ?? '');
 	let track    = $derived(lap?.track ?? '');
 	let game     = $derived(lap?.game ?? '');
 	let dateTime = $derived(formatDateTime(lap?.date_time));
-	let airTemp  = $derived(lap?.air_temp);
-	let roadTemp = $derived(lap?.road_temp);
+	let airTemp  = $derived(lap?.air_temp ? Math.round(lap.air_temp) : undefined);
+	let roadTemp = $derived(lap?.road_temp ? Math.round(lap.road_temp) : undefined);
 	let mode     = $derived(lap?.session_type || lap?.tyre_compound || undefined);
 </script>
 
@@ -26,25 +24,6 @@
 	<div class="body">
 		<div class="top-row">
 			<span class="car">{formatName(car)}</span>
-			<div class="actions">
-				{#if onPlay}
-					<button class="icon-btn" type="button" aria-label="Play" onclick={() => onPlay?.()}>
-						<svg viewBox="0 0 16 16" fill="currentColor" stroke="none">
-							<path d="M5 3.5v9l7-4.5-7-4.5z" />
-						</svg>
-					</button>
-				{/if}
-				{#if onSetup}
-					<button class="icon-btn" type="button" aria-label="Setup" onclick={() => onSetup?.()}>
-						<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-							<path
-								d="M10.5 3.5a2 2 0 0 1 2.83 2.83l-6.3 6.3-3.03.71.71-3.03 6.3-6.3z"
-							/>
-							<path d="M9.2 4.8l2 2" />
-						</svg>
-					</button>
-				{/if}
-			</div>
 		</div>
 
 		<div class="meta-row">
@@ -130,38 +109,6 @@
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
-	}
-
-	.actions {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-	}
-
-	.icon-btn {
-		width: 26px;
-		height: 26px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		padding: 0;
-		border-radius: var(--radius-pill);
-		border: 1px solid var(--color-border);
-		background: var(--card-bg);
-		color: var(--color-muted);
-		cursor: pointer;
-		transition: color 0.12s ease, background 0.12s ease, border-color 0.12s ease;
-	}
-
-	.icon-btn:hover {
-		color: var(--color-text);
-		background: var(--card-bg-hover);
-		border-color: var(--color-border-md);
-	}
-
-	.icon-btn svg {
-		width: 14px;
-		height: 14px;
 	}
 
 	.meta-row {

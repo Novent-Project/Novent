@@ -1,24 +1,14 @@
 <script lang="ts">
 	import { getContext, onMount, untrack } from 'svelte';
-	import { page } from '$app/state';
-	import { replaceState } from '$app/navigation';
 	import SessionsView from '$lib/components/analysis/views/SessionsView.svelte';
 	import TelemetryView from '$lib/components/analysis/views/TelemetryView.svelte';
 	import SessionTabs from '$lib/components/analysis/session/SessionTabs.svelte';
-	import Settings from '$lib/components/settings/Settings.svelte';
 	import { UiState, TabsState } from '$lib/components/analysis/state';
 	import type { DataState } from '$lib/state/data.svelte';
 
 	const data       = getContext<DataState>('data');
 	const ui         = new UiState();
 	const tabsState  = new TabsState(data);
-
-	$effect(() => {
-		if (page.url.searchParams.get('settings') === 'open') {
-			ui.openSettings();
-			replaceState('/analysis', {});
-		}
-	});
 
 	let tabs = $derived(
 		tabsState.tabs.length
@@ -70,17 +60,6 @@
 </script>
 
 <div class="analysis">
-	{#if ui.showSettings}
-		<Settings
-			bind:gamePaths={data.gamePaths}
-			bind:appZoom={data.appZoom}
-			bind:appZoomAuto={data.appZoomAuto}
-			bind:traceZoom={ui.traceZoom}
-			bind:graphPlacement={ui.graphPlacement}
-			onClose={() => ui.closeSettings()}
-		/>
-	{/if}
-
 	<SessionTabs {tabs} onSelect={selectTab} onNew={() => ui.showSessions()} onClose={closeTab} />
 
 	{#if ui.view === 'sessions' || !tabsState.active}

@@ -89,6 +89,10 @@
 		return viewer?.snapshotRearQuarter() ?? null;
 	}
 
+	export function snapshotCurrent(): string | null {
+		return viewer?.snapshotCurrent() ?? null;
+	}
+
 	async function openClicked() {
 		const f = await openFile?.();
 		if (f) await load(f);

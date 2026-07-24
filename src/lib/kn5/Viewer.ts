@@ -25,7 +25,12 @@ export class Viewer {
 	private modelMaxDim = 1;
 
 	private frameId = 0;
+	private needsRender = true;
 	private resizeObserver: ResizeObserver;
+
+	private requestRender = () => {
+		this.needsRender = true;
+	};
 
 	constructor(canvas: HTMLCanvasElement) {
 		this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
@@ -35,6 +40,7 @@ export class Viewer {
 		this.renderer.toneMappingExposure = 1.15;
 		this.renderer.shadowMap.enabled = true;
 		this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+		this.renderer.shadowMap.autoUpdate = false;
 
 		this.scene = new THREE.Scene();
 		this.scene.background = new THREE.Color(0x14161b);
@@ -54,6 +60,7 @@ export class Viewer {
 		this.controls.maxPolarAngle = Math.PI * 0.5;
 		this.controls.autoRotateSpeed = 1.1;
 		this.controls.target.copy(this.resetTarget);
+		this.controls.addEventListener('change', this.requestRender);
 
 		this.scene.add(new THREE.HemisphereLight(0xcfe0ff, 0x20222a, 0.35));
 
@@ -97,8 +104,11 @@ export class Viewer {
 
 		const loop = () => {
 			this.frameId = requestAnimationFrame(loop);
-			this.controls.update();
-			this.composer.render();
+			const moved = this.controls.update();
+			if (moved || this.needsRender) {
+				this.needsRender = false;
+				this.composer.render();
+			}
 		};
 		loop();
 	}
@@ -114,6 +124,7 @@ export class Viewer {
 		this.camera.updateProjectionMatrix();
 		this.composer.setPixelRatio(pr);
 		this.composer.setSize(w, h);
+		this.needsRender = true;
 	}
 
 	setModel(obj: THREE.Object3D) {
@@ -161,12 +172,21 @@ export class Viewer {
 		this.keyLight.position.set(s * 0.9, maxDim * 1.7 + 2, s * 0.7);
 		this.keyLight.target.position.set(0, size.y * 0.4, 0);
 		this.keyLight.target.updateMatrixWorld();
+		this.renderer.shadowMap.needsUpdate = true;
+		this.needsRender = true;
 	}
 
 	resetView() {
 		this.camera.position.copy(this.resetPos);
 		this.controls.target.copy(this.resetTarget);
 		this.controls.update();
+		this.needsRender = true;
+	}
+
+	snapshotCurrent(): string | null {
+		if (!this.model) return null;
+		this.composer.render();
+		return this.renderer.domElement.toDataURL('image/png');
 	}
 
 	snapshotSide(width = 1280, height = 448): string | null {
@@ -224,6 +244,7 @@ export class Viewer {
 
 	setAutoRotate(v: boolean) {
 		this.controls.autoRotate = v;
+		this.needsRender = true;
 	}
 	setWireframe(v: boolean) {
 		this.model?.traverse((o) => {
@@ -233,15 +254,19 @@ export class Viewer {
 				for (const m of mats) (m as THREE.MeshStandardMaterial).wireframe = v;
 			}
 		});
+		this.needsRender = true;
 	}
 	setGroundVisible(v: boolean) {
 		this.ground.visible = v;
+		this.needsRender = true;
 	}
 	setExposure(v: number) {
 		this.renderer.toneMappingExposure = v;
+		this.needsRender = true;
 	}
 	setBackground(hex: number) {
 		(this.scene.background as THREE.Color).setHex(hex);
+		this.needsRender = true;
 	}
 
 	dispose() {

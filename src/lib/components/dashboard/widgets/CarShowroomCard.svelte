@@ -3,9 +3,11 @@
 	import { fetchCarModel } from '$lib/api';
 	import { formatName } from '$lib/utils';
 
-	let { car, game, onSnapshot }: {
+	let { car, game, locked = false, onToggleLock, onSnapshot }: {
 		car: string | null;
 		game: string;
+		locked?: boolean;
+		onToggleLock?: () => void;
 		onSnapshot?: (shots: { side: string | null; rear: string | null }) => void;
 	} = $props();
 
@@ -16,6 +18,16 @@
 	let failed   = $state(false);
 	let loadedCar: string | null = null;
 	let loadedInto: Kn5Viewer | null = null;
+
+	let stillShot = $state<string | null>(null);
+	let stillCar  = $state<string | null>(null);
+
+	$effect.pre(() => {
+		if (locked && viewer && stillCar === car) {
+			const fresh = viewer.snapshotCurrent();
+			if (fresh) stillShot = fresh;
+		}
+	});
 
 	let placeholder = $derived(
 		fetching ? 'Fetching car model…'
@@ -46,6 +58,11 @@
 			const side = v.snapshotSide();
 			const rear = v.snapshotRearQuarter();
 			if (side || rear) onSnapshot?.({ side, rear });
+			const still = v.snapshotCurrent();
+			if (still) {
+				stillShot = still;
+				stillCar  = target;
+			}
 		});
 		return () => { cancelled = true; };
 	});
@@ -53,7 +70,31 @@
 
 <div class="showroom">
 	{#if supported}
-		<Kn5Viewer bind:this={viewer} brand={false} background="#0c0d10" {placeholder} />
+		{#if locked && stillShot && stillCar === car}
+			<img class="still" src={stillShot} alt={car ? formatName(car) : 'Car showroom'} />
+		{:else}
+			<Kn5Viewer bind:this={viewer} brand={false} background="#0c0d10" {placeholder} />
+		{/if}
+		<button
+			class="lock-btn"
+			class:locked
+			type="button"
+			aria-label={locked ? 'Unlock 3D renderer' : 'Lock renderer to a snapshot'}
+			title={locked ? 'Unlock 3D renderer' : 'Lock renderer (snapshot, zero GPU)'}
+			onclick={() => onToggleLock?.()}
+		>
+			{#if locked}
+				<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+					<rect x="3.5" y="7" width="9" height="6" rx="1.5" />
+					<path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" />
+				</svg>
+			{:else}
+				<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+					<rect x="3.5" y="7" width="9" height="6" rx="1.5" />
+					<path d="M5.5 7V5a2.5 2.5 0 0 1 4.9-.7" />
+				</svg>
+			{/if}
+		</button>
 	{:else}
 		<div class="soon">
 			<div class="soon-card">
@@ -70,6 +111,49 @@
 		position: absolute;
 		inset: 0;
 		overflow: hidden;
+	}
+
+	.still {
+		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		background: #0c0d10;
+	}
+
+	.lock-btn {
+		position: absolute;
+		bottom: 12px;
+		right: 12px;
+		z-index: 10;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 30px;
+		height: 30px;
+		padding: 0;
+		border-radius: var(--radius-sm);
+		background: var(--card-bg);
+		border: 1px solid var(--card-border);
+		color: var(--color-muted);
+		cursor: pointer;
+		transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+	}
+
+	.lock-btn:hover {
+		color: var(--color-text);
+		background: var(--card-bg-hover);
+	}
+
+	.lock-btn.locked {
+		color: var(--color-accent);
+		background: var(--color-accent-dim);
+		border-color: var(--color-accent-border);
+	}
+
+	.lock-btn svg {
+		width: 15px;
+		height: 15px;
 	}
 
 	.soon {

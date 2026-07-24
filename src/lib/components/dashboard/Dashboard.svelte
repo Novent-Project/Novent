@@ -159,6 +159,8 @@
 		<CarShowroomCard
 			car={sortedLaps[0]?.car ?? null}
 			game={sortedLaps[0]?.game ?? 'AC'}
+			locked={data.rendererLocked}
+			onToggleLock={() => (data.rendererLocked = !data.rendererLocked)}
 			onSnapshot={(shots) => {
 				heroShot = shots.side;
 				rearShot = shots.rear;

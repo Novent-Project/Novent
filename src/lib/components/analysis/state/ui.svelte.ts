@@ -1,34 +1,25 @@
+import { prefs, type GraphPlacement } from '$lib/state/prefs.svelte';
+
 export type View = 'sessions' | 'telemetry';
-export type GraphPlacement = 'bottom' | 'side';
-
-const GRAPH_PLACEMENT_KEY = 'novent:graph-placement';
-
-function loadGraphPlacement(): GraphPlacement {
-	if (typeof localStorage === 'undefined') return 'bottom';
-	try {
-		return localStorage.getItem(GRAPH_PLACEMENT_KEY) === 'side' ? 'side' : 'bottom';
-	} catch {
-		return 'bottom';
-	}
-}
+export type { GraphPlacement };
 
 export class UiState {
-	view         = $state<View>('sessions');
-	traceZoom    = $state(2);
-	showSettings = $state(false);
+	view = $state<View>('sessions');
 
-	#graphPlacement = $state<GraphPlacement>(loadGraphPlacement());
+	get traceZoom(): number {
+		return prefs.traceZoom;
+	}
+
+	set traceZoom(value: number) {
+		prefs.traceZoom = value;
+	}
 
 	get graphPlacement(): GraphPlacement {
-		return this.#graphPlacement;
+		return prefs.graphPlacement;
 	}
 
 	set graphPlacement(value: GraphPlacement) {
-		this.#graphPlacement = value;
-		try {
-			localStorage.setItem(GRAPH_PLACEMENT_KEY, value);
-		} catch {
-		}
+		prefs.graphPlacement = value;
 	}
 
 	showSessions() {
@@ -37,13 +28,5 @@ export class UiState {
 
 	showTelemetry() {
 		this.view = 'telemetry';
-	}
-
-	openSettings() {
-		this.showSettings = true;
-	}
-
-	closeSettings() {
-		this.showSettings = false;
 	}
 }

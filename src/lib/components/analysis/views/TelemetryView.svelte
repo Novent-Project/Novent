@@ -53,11 +53,7 @@
 
 		<div class="ov ov-topleft" style:zoom={hudScale} bind:clientHeight={topStackH}>
 			<div use:draggable={'session-header'}>
-				<SessionHeaderCard
-					lap={analysis.selectedLap}
-					onPlay={() => analysis.togglePlayback()}
-					onSetup={() => ui.openSettings()}
-				/>
+				<SessionHeaderCard lap={analysis.selectedLap} />
 			</div>
 			<div use:draggable={'standings'}>
 				<StandingsCard

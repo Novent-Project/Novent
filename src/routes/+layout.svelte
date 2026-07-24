@@ -8,7 +8,9 @@
   import Splashscreen from '$lib/components/chrome/Splashscreen.svelte';
   import Sidebar from '$lib/components/chrome/Sidebar.svelte';
   import TopBar from '$lib/components/chrome/TopBar.svelte';
+  import Settings from '$lib/components/settings/Settings.svelte';
   import { DataState, APP_ZOOM_STEP } from '$lib/state/data.svelte';
+  import { prefs } from '$lib/state/prefs.svelte';
 
   let { children } = $props();
 
@@ -48,6 +50,17 @@
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
 
 <Splashscreen ready={data.loaded} />
+
+{#if prefs.settingsOpen}
+  <Settings
+    bind:gamePaths={data.gamePaths}
+    bind:appZoom={data.appZoom}
+    bind:appZoomAuto={data.appZoomAuto}
+    bind:traceZoom={prefs.traceZoom}
+    bind:graphPlacement={prefs.graphPlacement}
+    onClose={() => (prefs.settingsOpen = false)}
+  />
+{/if}
 
 <div class="frame">
   <div class="padding">

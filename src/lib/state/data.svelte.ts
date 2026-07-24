@@ -11,6 +11,16 @@ export const APP_ZOOM_DEFAULT = 1;
 
 const APP_ZOOM_STORAGE_KEY = 'novent:app-zoom';
 const APP_ZOOM_AUTO_KEY    = 'novent:app-zoom-auto';
+const RENDERER_LOCKED_KEY  = 'novent:renderer-locked';
+
+function loadStoredRendererLocked(): boolean {
+	if (typeof localStorage === 'undefined') return false;
+	try {
+		return localStorage.getItem(RENDERER_LOCKED_KEY) === 'true';
+	} catch {
+		return false;
+	}
+}
 
 function computeMonitorZoom(): number {
 	if (typeof window === 'undefined' || !window.screen?.width) return APP_ZOOM_DEFAULT;
@@ -93,6 +103,21 @@ export class DataState {
 
 	refreshMonitorZoom() {
 		this.#monitorZoom = computeMonitorZoom();
+	}
+
+	#rendererLocked = $state(loadStoredRendererLocked());
+
+	get rendererLocked(): boolean {
+		return this.#rendererLocked;
+	}
+
+	set rendererLocked(value: boolean) {
+		this.#rendererLocked = value;
+		if (typeof localStorage === 'undefined') return;
+		try {
+			localStorage.setItem(RENDERER_LOCKED_KEY, String(value));
+		} catch {
+		}
 	}
 
 	detection: DetectionState = $derived(

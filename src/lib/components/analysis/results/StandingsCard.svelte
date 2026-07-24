@@ -23,7 +23,7 @@
 	let { entries, candidates, onAddComparison, onRemoveComparison, maxReached = false }: Props = $props();
 
 	const rows = $derived(entries ?? []);
-	const rowScale = $derived(Math.max(0.55, Math.min(1, 3 / Math.max(rows.length, 1))));
+	const rowScale = $derived(Math.max(0.5, Math.min(1, 2 / Math.max(rows.length, 1))));
 </script>
 
 <div class="hud-card standings">
