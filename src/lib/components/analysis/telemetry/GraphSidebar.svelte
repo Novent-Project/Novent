@@ -336,9 +336,7 @@
 		{/if}
 	</div>
 
-	<!-- svelte-ignore a11y_no_static_element_interactions -- pointer-only
-	     scrub/pan/zoom enhancement; playback is keyboard-reachable via the
-	     playbar's transport controls. -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
 		class="chart-stack"
 		onpointerdown={onStackPointerDown}
@@ -693,10 +691,6 @@
 		position: absolute;
 		z-index: 20;
 		transform: translate(-100%, -8px);
-	}
-
-	.hover-tooltip.flip {
-		transform: translate(14px, -8px);
 		display: flex;
 		flex-direction: column;
 		gap: 8px;
@@ -709,6 +703,10 @@
 		box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.5);
 		pointer-events: none;
 		white-space: nowrap;
+	}
+
+	.hover-tooltip.flip {
+		transform: translate(14px, -8px);
 	}
 
 	.hover-header {

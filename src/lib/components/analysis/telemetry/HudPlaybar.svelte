@@ -381,9 +381,7 @@
 				{/if}
 			</div>
 
-			<!-- svelte-ignore a11y_no_static_element_interactions -- pointer-only
-			     scrub/pan/zoom enhancement; playback is keyboard-reachable via the
-			     transport controls above. -->
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
 				class="chart-grid"
 				onpointerdown={onGridPointerDown}

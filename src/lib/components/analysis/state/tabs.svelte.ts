@@ -1,5 +1,6 @@
 import { AnalysisState } from './analysis.svelte.js';
 import { MapView } from './mapview.svelte.js';
+import { UiState } from './ui.svelte.js';
 import { formatName } from '$lib/utils';
 import type { DataState } from '$lib/state/data.svelte.js';
 import type { Lap } from '$lib/api';
@@ -36,13 +37,17 @@ export class TabsState {
 	tabs     = $state<SessionTab[]>([]);
 	activeId = $state<string | null>(null);
 
+	#restored = false;
+
 	constructor(private readonly data: DataState) {}
 
 	get active(): SessionTab | null {
 		return this.tabs.find(t => t.id === this.activeId) ?? null;
 	}
 
-	async restore() {
+	async restore(): Promise<boolean> {
+		if (this.#restored) return false;
+		this.#restored = true;
 		const { openIds, activeId } = loadPersisted();
 		for (const uuid of openIds) {
 			const lap = this.data.lapById(uuid);
@@ -53,6 +58,11 @@ export class TabsState {
 			? activeId
 			: (this.tabs[0]?.id ?? null);
 		this.#persist();
+		return true;
+	}
+
+	deactivateAll() {
+		this.tabs.forEach(t => t.analysis.deactivate());
 	}
 
 	async open(lap: Lap) {
@@ -123,4 +133,14 @@ export class TabsState {
 		} catch {
 		}
 	}
+}
+
+let stores: { data: DataState; ui: UiState; tabs: TabsState } | null = null;
+
+export function analysisStores(data: DataState): { ui: UiState; tabs: TabsState } {
+	if (!stores || stores.data !== data) {
+		stores?.tabs.destroy();
+		stores = { data, ui: new UiState(), tabs: new TabsState(data) };
+	}
+	return stores;
 }

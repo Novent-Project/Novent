@@ -1,14 +1,24 @@
 <div align="center">
 
-# Novent
+<img src="docs/banner.svg" alt="Novent" width="100%" />
 
-**A sim-racing telemetry companion for Assetto Corsa.**
+A sim-racing telemetry companion for Assetto Corsa.
 
-Novent detects your session, records every lap automatically, and turns the data into a race-engineer-grade analysis suite — wrapped in a lightweight Tauri app.
+
 
 </div>
 
+Novent detects your session, records every lap automatically, and turns the data into a race-engineer-grade analysis suite — wrapped in a lightweight Tauri app.
+
+
 ---
+
+## Screenshots
+
+![[docs/Pasted image 20260726151450.png|697]]
+
+![[docs/Pasted image 20260726152143.png]]
+
 
 ## Features
 

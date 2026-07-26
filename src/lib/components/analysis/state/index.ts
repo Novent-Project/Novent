@@ -10,4 +10,4 @@ export {
 	type DriverTelemetry,
 } from './analysis.svelte.js';
 export { MapView, ZOOM_UI_MIN, ZOOM_UI_MAX } from './mapview.svelte.js';
-export { TabsState, type SessionTab } from './tabs.svelte.js';
+export { TabsState, analysisStores, type SessionTab } from './tabs.svelte.js';

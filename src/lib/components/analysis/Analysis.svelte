@@ -3,12 +3,11 @@
 	import SessionsView from '$lib/components/analysis/views/SessionsView.svelte';
 	import TelemetryView from '$lib/components/analysis/views/TelemetryView.svelte';
 	import SessionTabs from '$lib/components/analysis/session/SessionTabs.svelte';
-	import { UiState, TabsState } from '$lib/components/analysis/state';
+	import { analysisStores } from '$lib/components/analysis/state';
 	import type { DataState } from '$lib/state/data.svelte';
 
-	const data       = getContext<DataState>('data');
-	const ui         = new UiState();
-	const tabsState  = new TabsState(data);
+	const data = getContext<DataState>('data');
+	const { ui, tabs: tabsState } = analysisStores(data);
 
 	let tabs = $derived(
 		tabsState.tabs.length
@@ -51,11 +50,11 @@
 	});
 
 	onMount(() => {
-		tabsState.restore().then(() => {
-			if (tabsState.active) ui.showTelemetry();
+		tabsState.restore().then(restored => {
+			if (restored && tabsState.active) ui.showTelemetry();
 		});
 
-		return () => tabsState.destroy();
+		return () => tabsState.deactivateAll();
 	});
 </script>
 

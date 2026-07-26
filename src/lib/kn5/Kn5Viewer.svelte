@@ -39,7 +39,7 @@
 	let ground = $state(true);
 	let exposure = $state(1.05);
 	let panelCollapsed = $state(false);
-	// svelte-ignore state_referenced_locally -- seed only; swatches own it after mount
+	// svelte-ignore state_referenced_locally
 	let bg = $state(background);
 
 	const backgrounds = $derived([

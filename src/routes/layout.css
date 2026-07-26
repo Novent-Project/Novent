@@ -85,7 +85,6 @@ div#svelte {
 	background: rgba(16, 185, 129, 0.35);
 }
 
-/* HUD shared utilities (used across widget components) */
 .hud-card {
 	background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), var(--card-bg) 60%);
 	backdrop-filter: blur(var(--card-blur)) saturate(160%);

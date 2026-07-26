@@ -30,9 +30,11 @@ function smoothPath(pts: Pt[]): string {
 		const p2 = pts[i + 1];
 		const p3 = pts[i + 2] ?? p2;
 
-		const c1x = p1.x + (p2.x - p0.x) / 6;
+		const lo = Math.min(p1.x, p2.x);
+		const hi = Math.max(p1.x, p2.x);
+		const c1x = Math.min(hi, Math.max(lo, p1.x + (p2.x - p0.x) / 6));
 		const c1y = p1.y + (p2.y - p0.y) / 6;
-		const c2x = p2.x - (p3.x - p1.x) / 6;
+		const c2x = Math.min(hi, Math.max(lo, p2.x - (p3.x - p1.x) / 6));
 		const c2y = p2.y - (p3.y - p1.y) / 6;
 
 		d += `C ${c1x.toFixed(2)},${c1y.toFixed(2)} ${c2x.toFixed(2)},${c2y.toFixed(2)} ${p2.x.toFixed(2)},${p2.y.toFixed(2)} `;
