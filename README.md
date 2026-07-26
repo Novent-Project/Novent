@@ -8,26 +8,25 @@ A sim-racing telemetry companion for Assetto Corsa.
 
 </div>
 
-Novent detects your session, records every lap automatically, and turns the data into a race-engineer-grade analysis suite — wrapped in a lightweight Tauri app.
-
+Novent detects your session, records every lap automatically, and turns the data into a race-engineer-grade analysis suite, wrapped in a lightweight Tauri app.
 
 ---
 
 ## Screenshots
 
-![[docs/Pasted image 20260726151450.png|697]]
+<img src="docs/Pasted%20image%2020260726151450.png" alt="Novent dashboard" width="697" />
 
-![[docs/Pasted image 20260726152143.png]]
+<img src="docs/Pasted%20image%2020260726152143.png" alt="Novent lap analysis" />
 
 
 ## Features
 
-- **Automatic lap recording** — watches AC's shared memory and captures every lap: inputs, speed, gear, RPM, G-forces, and position
-- **Lap analysis** — playback with scrubbing, track map with corner segments, delta-time trace, telemetry graphs, G-force and sector widgets
-- **Reference laps** — compare up to six laps with color-coded ghosts, gaps, and per-lap sector columns
-- **Sessions & favorites** — laps grouped by session, with a pinned Favorites collection across all cars and tracks
-- **3D car showroom** — renders your last-driven car's actual KN5 model; lockable to a snapshot for zero GPU use
-- **Dashboard** — car spotlight renders, activity heatmap, peripheral detection, latest-session trace
+- **Automatic lap recording**: watches AC's shared memory and captures every lap, including inputs, speed, gear, RPM, G-forces, and position
+- **Lap analysis**: playback with scrubbing, track map with corner segments, delta-time trace, telemetry graphs, G-force and sector widgets
+- **Reference laps**: compare up to six laps with color-coded ghosts, gaps, and per-lap sector columns
+- **Sessions & favorites**: laps grouped by session, with a pinned Favorites collection across all cars and tracks
+- **3D car showroom**: renders your last-driven car's actual KN5 model; lockable to a snapshot for zero GPU use
+- **Dashboard**: car spotlight renders, activity heatmap, peripheral detection, latest-session trace
 
 ---
 
