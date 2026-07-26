@@ -14,9 +14,9 @@ Novent detects your session, records every lap automatically, and turns the data
 
 ## Screenshots
 
-<img src="docs/Pasted%20image%2020260726151450.png" alt="Novent dashboard" width="697" />
+<img src="docs/cornerview.png" alt="Novent dashboard" width="697" />
 
-<img src="docs/Pasted%20image%2020260726152143.png" alt="Novent lap analysis" />
+<img src="docs/Pasted%20image%2020260726152143.png" alt="Novent lap analysis" width="697" />
 
 
 ## Features
