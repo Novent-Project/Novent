@@ -30,30 +30,56 @@ export function sampleAt(trace: Trace, i: number): Sample {
 	};
 }
 
+function isWrap(prev: number, cur: number): boolean {
+	return prev > 0.5 && cur < prev - 0.5;
+}
+
 function truncateAtLapEnd(normPos: number[]): number {
 	const n = normPos.length;
-	for (let i = 1; i < n; i++) {
-		if (normPos[i - 1] > 0.5 && normPos[i] < normPos[i - 1] - 0.5) return i;
+	for (let i = Math.max(1, Math.floor(n * 0.75)); i < n; i++) {
+		if (isWrap(normPos[i - 1], normPos[i])) return i;
 	}
 	return n;
 }
 
+function renormalizeProgress(norm: number[]): number[] {
+	const n = norm.length;
+	if (n < 2) return norm;
+	let wraps = 0;
+	const un = new Array<number>(n);
+	un[0] = norm[0];
+	for (let i = 1; i < n; i++) {
+		if (isWrap(norm[i - 1], norm[i])) wraps++;
+		un[i] = norm[i] + wraps;
+	}
+	if (wraps === 0) return norm;
+	const base = un[0];
+	const span = un[n - 1] - base;
+	if (span <= 1e-6) return norm;
+	for (let i = 0; i < n; i++) {
+		un[i] = Math.min(1, Math.max(0, (un[i] - base) / span));
+	}
+	return un;
+}
+
 export function trimTrace(t: Trace): Trace {
 	const end = truncateAtLapEnd(t.normPos);
-	if (end === t.normPos.length) return t;
+	const cut = end !== t.normPos.length;
+	const normPos = renormalizeProgress(cut ? t.normPos.slice(0, end) : t.normPos);
+	if (!cut && normPos === t.normPos) return t;
 	return {
-		gas:     t.gas.slice(0, end),
-		brake:   t.brake.slice(0, end),
-		steer:   t.steer.slice(0, end),
-		normPos: t.normPos.slice(0, end),
-		worldX:  t.worldX.slice(0, end),
-		worldZ:  t.worldZ.slice(0, end),
-		time:    t.time.slice(0, end),
-		speed:   t.speed.slice(0, end),
-		gear:    t.gear.slice(0, end),
-		rpm:     t.rpm.slice(0, end),
-		accLat:  t.accLat.slice(0, end),
-		accLon:  t.accLon.slice(0, end),
+		gas:     cut ? t.gas.slice(0, end) : t.gas,
+		brake:   cut ? t.brake.slice(0, end) : t.brake,
+		steer:   cut ? t.steer.slice(0, end) : t.steer,
+		normPos,
+		worldX:  cut ? t.worldX.slice(0, end) : t.worldX,
+		worldZ:  cut ? t.worldZ.slice(0, end) : t.worldZ,
+		time:    cut ? t.time.slice(0, end) : t.time,
+		speed:   cut ? t.speed.slice(0, end) : t.speed,
+		gear:    cut ? t.gear.slice(0, end) : t.gear,
+		rpm:     cut ? t.rpm.slice(0, end) : t.rpm,
+		accLat:  cut ? t.accLat.slice(0, end) : t.accLat,
+		accLon:  cut ? t.accLon.slice(0, end) : t.accLon,
 	};
 }
 

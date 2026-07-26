@@ -93,6 +93,14 @@
 		return viewer?.snapshotCurrent() ?? null;
 	}
 
+	export function canvasWidth(): number {
+		return canvas?.clientWidth ?? 0;
+	}
+
+	export function isEncrypted(): boolean {
+		return encrypted;
+	}
+
 	async function openClicked() {
 		const f = await openFile?.();
 		if (f) await load(f);

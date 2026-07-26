@@ -97,7 +97,7 @@
 <svelte:window onkeydown={handleQuitPanelKeydown} />
 
 <header class="topbar" data-tauri-drag-region>
-	<div class="search"></div>
+	<div class="search"><span class="search-soon">Search coming soon</span></div>
 
 	<div class="spacer" data-tauri-drag-region></div>
 
@@ -184,12 +184,25 @@
 	}
 
 	.search {
+		display: flex;
+		align-items: center;
 		width: 280px;
 		max-width: 40%;
 		height: 30px;
+		padding: 0 14px;
+		box-sizing: border-box;
 		border-radius: var(--radius-pill);
 		background: var(--card-bg);
 		border: 1px solid var(--card-border);
+	}
+
+	.search-soon {
+		font-size: 11px;
+		color: var(--color-subtle);
+		letter-spacing: 0.02em;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
 	.spacer {

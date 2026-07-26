@@ -74,10 +74,15 @@
 				stroke="none"
 			/>
 		{:else if name === 'car'}
-			<path d="M6 6h15l-1.5 9h-12z" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
-			<path d="M6 6L4.5 3H2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
-			<circle cx="9.5" cy="19" r="1.4" fill="currentColor" stroke="none" />
-			<circle cx="17.5" cy="19" r="1.4" fill="currentColor" stroke="none" />
+			<path
+				d="M4.3 15.8H3c-.3 0-.5-.2-.5-.5v-1.9c0-.9.6-1.6 1.4-1.8l2.6-.6 2.1-3c.4-.6 1-.9 1.7-.9h4c.7 0 1.3.3 1.7.8l2.4 3 2.2.6c.8.2 1.4 1 1.4 1.8v1.5c0 .3-.2.5-.5.5h-1.3"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				vector-effect="non-scaling-stroke"
+			/>
+			<path d="M9.4 15.8h5.3" stroke-linecap="round" vector-effect="non-scaling-stroke" />
+			<circle cx="6.9" cy="15.8" r="1.9" vector-effect="non-scaling-stroke" />
+			<circle cx="17.1" cy="15.8" r="1.9" vector-effect="non-scaling-stroke" />
 		{/if}
 	</svg>
 {/if}

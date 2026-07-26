@@ -1,42 +1,72 @@
-# sv
+<div align="center">
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+# Novent
 
-## Creating a project
+**A sim-racing telemetry companion for Assetto Corsa.**
 
-If you're seeing this, you've probably already done this step. Congrats!
+Novent detects your session, records every lap automatically, and turns the data into a race-engineer-grade analysis suite — wrapped in a lightweight Tauri app.
 
-```sh
-# create a new project
-npx sv create my-app
+</div>
+
+---
+
+## Features
+
+- **Automatic lap recording** — watches AC's shared memory and captures every lap: inputs, speed, gear, RPM, G-forces, and position
+- **Lap analysis** — playback with scrubbing, track map with corner segments, delta-time trace, telemetry graphs, G-force and sector widgets
+- **Reference laps** — compare up to six laps with color-coded ghosts, gaps, and per-lap sector columns
+- **Sessions & favorites** — laps grouped by session, with a pinned Favorites collection across all cars and tracks
+- **3D car showroom** — renders your last-driven car's actual KN5 model; lockable to a snapshot for zero GPU use
+- **Dashboard** — car spotlight renders, activity heatmap, peripheral detection, latest-session trace
+
+---
+
+## Requirements
+
+- **Windows** with [Assetto Corsa](https://store.steampowered.com/app/244210/Assetto_Corsa/) installed
+- Point Novent at your AC install folder in **Settings → Game Detection** (used for track boundaries and car models)
+
+---
+
+## Development
+
+**Prerequisites:** [Rust](https://rustup.rs), [Node.js](https://nodejs.org), [pnpm](https://pnpm.io), [Python 3.13](https://www.python.org), and the [Tauri v2 prerequisites](https://tauri.app/start/prerequisites/).
+
+```bash
+git clone <repo-url>
+cd Novent
+pnpm install
+pnpm tauri:dev
 ```
 
-To recreate this project with the same configuration:
+The Python backend runs as a bundled sidecar. After changing `backend.py`, rebuild it with PyInstaller and drop it into `src-tauri/binaries/`:
 
-```sh
-# recreate this project
-npx sv@0.15.1 create --template minimal --types ts --add tailwindcss="plugins:typography,forms" --install npm frontend
+```bash
+pip install pyinstaller fastapi uvicorn h5py numpy psutil
+pyinstaller --onefile --console --name backend-x86_64-pc-windows-msvc backend.py
+copy dist\backend-x86_64-pc-windows-msvc.exe src-tauri\binaries\
 ```
 
-## Developing
+---
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+## Stack
 
-```sh
-npm run dev
+| | |
+|---|---|
+| [Tauri v2](https://tauri.app) | Native app shell, tray, sidecar management |
+| [Svelte 5](https://svelte.dev) + [SvelteKit 2](https://kit.svelte.dev) + [TypeScript](https://www.typescriptlang.org) | UI |
+| [three.js](https://threejs.org) | KN5 car renderer (custom parser, DDS decoding, AC detail-map shaders) |
+| [FastAPI](https://fastapi.tiangolo.com) + [NumPy](https://numpy.org) + [h5py](https://www.h5py.org) | Python telemetry backend (shared-memory reader, HDF5 lap storage, SQLite index) |
+| [Vite](https://vitejs.dev) | Frontend bundler |
 
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
+---
 
-## Building
+## License
 
-To create a production version of your app:
+Distributed under the [MIT License](./LICENSE).
 
-```sh
-npm run build
-```
+---
 
-You can preview the production build with `npm run preview`.
+## Disclaimer
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+Novent is an independent project and is not affiliated with Kunos Simulazioni or Assetto Corsa. Car models and textures are read from your local game installation and never redistributed.

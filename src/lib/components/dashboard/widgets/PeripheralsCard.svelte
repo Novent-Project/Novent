@@ -29,7 +29,10 @@
 		const pads = navigator.getGamepads?.() ?? [];
 		const found = new Set<PeripheralId>();
 		for (const pad of pads) {
-			if (pad) found.add(classify(pad.id));
+			if (!pad) continue;
+			const kind = classify(pad.id);
+			found.add(kind);
+			if (kind === 'wheel' && pad.axes.length >= 3) found.add('pedals');
 		}
 		for (const p of peripherals) {
 			p.connected = found.has(p.id);

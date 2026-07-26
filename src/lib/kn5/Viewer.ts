@@ -185,6 +185,7 @@ export class Viewer {
 
 	snapshotCurrent(): string | null {
 		if (!this.model) return null;
+		this.resize();
 		this.composer.render();
 		return this.renderer.domElement.toDataURL('image/png');
 	}

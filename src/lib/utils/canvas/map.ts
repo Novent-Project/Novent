@@ -124,6 +124,32 @@ interface StaticLayer {
 
 const staticLayers = new WeakMap<HTMLCanvasElement, StaticLayer>();
 
+function collectScreenPoints(
+	trace: Trace,
+	step: number,
+	toScreen: (wx: number, wz: number) => { sx: number; sz: number },
+): { x: number; z: number }[] {
+	const pts: { x: number; z: number }[] = [];
+	for (let i = 0; i < trace.worldX.length; i += step) {
+		const wx = trace.worldX[i], wz = trace.worldZ[i];
+		if (isGarbage(wx, wz)) continue;
+		const { sx, sz } = toScreen(wx, wz);
+		pts.push({ x: sx, z: sz });
+	}
+	return pts;
+}
+
+function strokeSmooth(ctx: CanvasRenderingContext2D, pts: { x: number; z: number }[]) {
+	if (pts.length < 2) return;
+	ctx.moveTo(pts[0].x, pts[0].z);
+	for (let i = 1; i < pts.length - 1; i++) {
+		ctx.quadraticCurveTo(pts[i].x, pts[i].z, (pts[i].x + pts[i + 1].x) / 2, (pts[i].z + pts[i + 1].z) / 2);
+	}
+	const last = pts[pts.length - 1];
+	ctx.lineTo(last.x, last.z);
+	ctx.stroke();
+}
+
 function traceDiagonal(trace: Trace): number {
 	let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
 	for (let i = 0; i < trace.worldX.length; i++) {
@@ -200,8 +226,8 @@ function renderStaticLayer(
 	}
 
 	const total    = trace.worldX.length;
-	const diagLen  = layer.diagLen;
-	const lineStep = Math.max(1, Math.floor(total / (Math.max(diagLen, 1) * 2)));
+	const diagPx   = Math.max(layer.diagLen * scale, 1);
+	const lineStep = Math.max(1, Math.floor(total / (diagPx * 2)));
 
 	if (ds) {
 		const dsTotal = ds.gas.length;
@@ -209,42 +235,42 @@ function renderStaticLayer(
 		ctx.lineCap   = 'round';
 		ctx.lineJoin  = 'round';
 
-		for (let i = 0; i < total - lineStep; i += lineStep) {
+		let prevStyle = '';
+		for (let i = lineStep; i < total - lineStep; i += lineStep) {
+			const pxw = trace.worldX[i - lineStep], pzw = trace.worldZ[i - lineStep];
 			const wx = trace.worldX[i], wz = trace.worldZ[i];
-			const nx = trace.worldX[i + lineStep], nz = trace.worldZ[i + lineStep];
-			if (isGarbage(wx, wz) || isGarbage(nx, nz)) continue;
+			const nxw = trace.worldX[i + lineStep], nzw = trace.worldZ[i + lineStep];
+			if (isGarbage(pxw, pzw) || isGarbage(wx, wz) || isGarbage(nxw, nzw)) continue;
 
 			const di = distBucket(trace.normPos[i] ?? 0, dsTotal);
 			const g  = ds.gas[di]   ?? 0;
 			const b  = ds.brake[di] ?? 0;
 
-			ctx.beginPath();
-			ctx.strokeStyle = b > 0.05
-				? `rgba(239,68,68,${0.5 + b * 0.5})`
+			const style = b > 0.05
+				? `rgba(239,68,68,${Math.round((0.5 + b * 0.5) * 10) / 10})`
 				: g > 0.05
-					? `rgba(16,185,129,${0.5 + g * 0.5})`
+					? `rgba(16,185,129,${Math.round((0.5 + g * 0.5) * 10) / 10})`
 					: 'rgba(255,255,255,0.35)';
-			const { sx: x1, sz: z1 } = toScreen(wx, wz);
-			const { sx: x2, sz: z2 } = toScreen(nx, nz);
-			ctx.moveTo(x1, z1);
-			ctx.lineTo(x2, z2);
-			ctx.stroke();
+			if (style !== prevStyle) {
+				if (prevStyle) ctx.stroke();
+				ctx.beginPath();
+				ctx.strokeStyle = style;
+				prevStyle = style;
+			}
+			const p = toScreen(pxw, pzw);
+			const c = toScreen(wx, wz);
+			const n = toScreen(nxw, nzw);
+			ctx.moveTo((p.sx + c.sx) / 2, (p.sz + c.sz) / 2);
+			ctx.quadraticCurveTo(c.sx, c.sz, (c.sx + n.sx) / 2, (c.sz + n.sz) / 2);
 		}
+		if (prevStyle) ctx.stroke();
 	} else {
 		ctx.beginPath();
 		ctx.strokeStyle = 'rgba(255,255,255,0.8)';
 		ctx.lineWidth   = 3;
 		ctx.lineCap     = 'round';
 		ctx.lineJoin    = 'round';
-		let first = true;
-		for (let i = 0; i < total; i += lineStep) {
-			const wx = trace.worldX[i], wz = trace.worldZ[i];
-			if (isGarbage(wx, wz)) continue;
-			const { sx, sz } = toScreen(wx, wz);
-			first ? ctx.moveTo(sx, sz) : ctx.lineTo(sx, sz);
-			first = false;
-		}
-		ctx.stroke();
+		strokeSmooth(ctx, collectScreenPoints(trace, lineStep, toScreen));
 	}
 
 	const sf = toScreen(trace.worldX[0], trace.worldZ[0]);
@@ -259,22 +285,14 @@ function renderStaticLayer(
 		const ctrace = comp.trace;
 		const ctotal = ctrace.worldX.length;
 		if (!ctotal) continue;
-		const cLineStep = Math.max(1, Math.floor(ctotal / (Math.max(diagLen, 1) * 2)));
+		const cLineStep = Math.max(1, Math.floor(ctotal / (diagPx * 2)));
 		ctx.beginPath();
 		ctx.strokeStyle = comp.color;
 		ctx.globalAlpha = 0.55;
 		ctx.lineWidth   = 2;
 		ctx.lineCap     = 'round';
 		ctx.lineJoin    = 'round';
-		let first = true;
-		for (let i = 0; i < ctotal; i += cLineStep) {
-			const wx = ctrace.worldX[i], wz = ctrace.worldZ[i];
-			if (isGarbage(wx, wz)) continue;
-			const { sx, sz } = toScreen(wx, wz);
-			first ? ctx.moveTo(sx, sz) : ctx.lineTo(sx, sz);
-			first = false;
-		}
-		ctx.stroke();
+		strokeSmooth(ctx, collectScreenPoints(ctrace, cLineStep, toScreen));
 		ctx.globalAlpha = 1;
 	}
 }

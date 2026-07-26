@@ -105,9 +105,9 @@
 			const ms = l.date_time ? new Date(l.date_time).getTime() : NaN;
 			if (!isNaN(ms) && ms > e.lastMs) e.lastMs = ms;
 		}
-		const top = [...byCar.entries()].sort((a, b) => b[1].laps - a[1].laps)[0];
-		if (!top) return null;
-		const [car, v] = top;
+		const car = sortedLaps[0]?.car;
+		const v   = car ? byCar.get(car) : undefined;
+		if (!car || !v) return null;
 		const track = [...v.tracks.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
 		return {
 			car,
@@ -173,11 +173,7 @@
 
 	<div class="c-latest"><LatestSessionCard session={latest} trace={latestTrace} /></div>
 	<div class="c-car">
-		<MostUsedCarCard
-			car={topCar}
-			heroImage={topCar && topCar.car === sortedLaps[0]?.car ? heroShot : null}
-			rearImage={topCar && topCar.car === sortedLaps[0]?.car ? rearShot : null}
-		/>
+		<MostUsedCarCard car={topCar} heroImage={heroShot} rearImage={rearShot} />
 	</div>
 	<div class="c-activity"><ActivityHeatmap entries={heatmapEntries} stats={activityStats} /></div>
 </div>

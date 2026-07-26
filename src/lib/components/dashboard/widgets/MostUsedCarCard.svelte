@@ -44,7 +44,7 @@
 			<span class="logo"><Icon game={car.game ?? 'AC'} size={20} /></span>
 			<div class="titles">
 				<span class="name">{formatName(car.car)}</span>
-				<span class="tag">Most driven car</span>
+				<span class="tag">Most recent car</span>
 			</div>
 		</div>
 

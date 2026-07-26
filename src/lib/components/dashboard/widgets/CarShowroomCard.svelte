@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Kn5Viewer from '$lib/kn5/Kn5Viewer.svelte';
-	import { fetchCarModel } from '$lib/api';
+	import { carPreviewUrl, fetchCarModel } from '$lib/api';
 	import { formatName } from '$lib/utils';
 
 	let { car, game, locked = false, onToggleLock, onSnapshot }: {
@@ -21,6 +21,8 @@
 
 	let stillShot = $state<string | null>(null);
 	let stillCar  = $state<string | null>(null);
+	let preview   = $state<string | null>(null);
+	let previewFailed: string | null = null;
 
 	$effect.pre(() => {
 		if (locked && viewer && stillCar === car) {
@@ -44,6 +46,7 @@
 		let cancelled = false;
 		fetching = true;
 		failed   = false;
+		preview  = null;
 		fetchCarModel(game, target).then(async (data) => {
 			if (cancelled) return;
 			fetching = false;
@@ -55,9 +58,23 @@
 			loadedInto = v;
 			await v.load({ name: formatName(target), data });
 			if (cancelled) return;
+			if (v.isEncrypted()) {
+				const url = carPreviewUrl(game, target);
+				if (url !== previewFailed) preview = url;
+				onSnapshot?.({ side: null, rear: null });
+				return;
+			}
 			const side = v.snapshotSide();
 			const rear = v.snapshotRearQuarter();
 			if (side || rear) onSnapshot?.({ side, rear });
+			let stableW = 0;
+			for (let i = 0; i < 60; i++) {
+				await new Promise(requestAnimationFrame);
+				if (cancelled) return;
+				const w = v.canvasWidth();
+				if (i >= 5 && w > 200 && w === stableW) break;
+				stableW = w;
+			}
 			const still = v.snapshotCurrent();
 			if (still) {
 				stillShot = still;
@@ -70,11 +87,24 @@
 
 <div class="showroom">
 	{#if supported}
-		{#if locked && stillShot && stillCar === car}
+		{#if preview}
+			<div class="preview-wrap">
+				<img
+					class="preview"
+					src={preview}
+					alt={car ? formatName(car) : 'Car preview'}
+					onerror={() => {
+						previewFailed = preview;
+						preview = null;
+					}}
+				/>
+			</div>
+		{:else if locked && stillShot && stillCar === car}
 			<img class="still" src={stillShot} alt={car ? formatName(car) : 'Car showroom'} />
 		{:else}
 			<Kn5Viewer bind:this={viewer} brand={false} background="#0c0d10" {placeholder} />
 		{/if}
+		{#if !preview}
 		<button
 			class="lock-btn"
 			class:locked
@@ -95,6 +125,7 @@
 				</svg>
 			{/if}
 		</button>
+		{/if}
 	{:else}
 		<div class="soon">
 			<div class="soon-card">
@@ -119,6 +150,21 @@
 		height: 100%;
 		object-fit: cover;
 		background: #0c0d10;
+	}
+
+	.preview-wrap {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: #0c0d10;
+	}
+
+	.preview {
+		max-width: 100%;
+		max-height: 100%;
+		object-fit: contain;
 	}
 
 	.lock-btn {
