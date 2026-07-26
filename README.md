@@ -2,8 +2,6 @@
 
 <img src="docs/banner.svg" alt="Novent" width="100%" />
 
-A sim-racing telemetry companion for Assetto Corsa.
-
 
 
 </div>
@@ -33,8 +31,7 @@ Novent detects your session, records every lap automatically, and turns the data
 
 ## Requirements
 
-- **Windows** with [Assetto Corsa](https://store.steampowered.com/app/244210/Assetto_Corsa/) installed
-- Point Novent at your AC install folder in **Settings → Game Detection** (used for track boundaries and car models)
+- Point Novent at your game root folder in **Settings → Game Detection** (used for track boundaries and car models)
 
 ---
 
