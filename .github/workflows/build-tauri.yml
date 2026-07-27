@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: write # required to create the release
 
 jobs:
   build:
@@ -17,7 +17,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 11
+          version: 10
 
       - uses: actions/setup-node@v4
         with:
@@ -36,34 +36,48 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Latest release in THIS repo (repo A's versions are unrelated).
-          LATEST=$(gh release view --repo "$GITHUB_REPOSITORY" \
-                     --json tagName --jq .tagName 2>/dev/null || echo "")
+          set -euo pipefail
 
-          if [ -z "$LATEST" ]; then
-            NEXT="v0.1"
+          RAW=$(gh release view --repo "$GITHUB_REPOSITORY" \
+                  --json tagName --jq .tagName 2>/dev/null || echo "")
+
+          # gh emits CRLF on Windows — strip all whitespace before parsing
+          LATEST=$(printf '%s' "$RAW" | tr -d '[:space:]')
+
+          if [[ "$LATEST" =~ ^v?([0-9]+)\.([0-9]+) ]]; then
+            MAJOR="${BASH_REMATCH[1]}"
+            MINOR="${BASH_REMATCH[2]}"
+            NEXT_NUM="${MAJOR}.$((MINOR + 1))"
           else
-            MAJOR=$(echo "${LATEST#v}" | cut -d. -f1)
-            MINOR=$(echo "${LATEST#v}" | cut -d. -f2)
-            NEXT="v${MAJOR}.$((MINOR + 1))"
+            NEXT_NUM="0.1"
           fi
 
-          echo "Previous: ${LATEST:-none}  ->  Next: $NEXT"
-          echo "tag=$NEXT"            >> "$GITHUB_OUTPUT"
-          echo "number=${NEXT#v}"     >> "$GITHUB_OUTPUT"
+          echo "Previous: [${LATEST:-none}]  ->  Next: [v${NEXT_NUM}]"
+          echo "tag=v${NEXT_NUM}"       >> "$GITHUB_OUTPUT"
+          echo "semver=${NEXT_NUM}.0"   >> "$GITHUB_OUTPUT"
 
       - name: Stamp version into tauri.conf.json
         shell: bash
+        env:
+          APP_VERSION: ${{ steps.version.outputs.semver }}
         run: |
-          # Tauri needs full semver (x.y.z), so append .0
+          set -euo pipefail
+
+          echo "Stamping version: [$APP_VERSION]"
+          if ! [[ "$APP_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Not a valid semver string: [$APP_VERSION]"
+            exit 1
+          fi
+
           node -e "
             const fs = require('fs');
             const p  = 'src-tauri/tauri.conf.json';
             const c  = JSON.parse(fs.readFileSync(p, 'utf8'));
-            c.version = '${{ steps.version.outputs.number }}.0';
-            fs.writeFileSync(p, JSON.stringify(c, null, 2));
-            console.log('version =', c.version);
+            c.version = process.env.APP_VERSION;
+            fs.writeFileSync(p, JSON.stringify(c, null, 2) + '\n');
           "
+
+          node -e "console.log('confirmed:', JSON.stringify(require('./src-tauri/tauri.conf.json').version))"
 
       - name: Download sidecar
         shell: bash
