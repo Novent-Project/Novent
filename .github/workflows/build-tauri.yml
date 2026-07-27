@@ -24,8 +24,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p src-tauri/binaries
-          gh release download --repo your-org/source-repo \
-            --pattern 'myapp-x86_64-pc-windows-msvc.exe' \
+          gh release download --repo Novent-Project/Novent-Backend \
+            --pattern 'backend-x86_64-pc-windows-msvc.exe' \
             --dir src-tauri/binaries --clobber
           ls -la src-tauri/binaries
 
