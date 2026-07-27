@@ -2,7 +2,10 @@
 
 <img src="docs/banner.svg" alt="Novent" width="100%" />
 
-
+[![badge](https://shieldcn.dev/github/Novent-Project/Novent/stars.svg?variant=secondary&size=default&theme=neutral&font=geist)](https://github.com/Novent-Project/Novent)
+[![badge](https://shieldcn.dev/github/Novent-Project/Novent/downloads.svg?variant=secondary)](https://github.com/Novent-Project/Novent/releases)
+[![badge](https://shieldcn.dev/github/Novent-Project/Novent/contributors.svg?variant=secondary)](https://github.com/Novent-Project/Novent/graphs/contributors)
+[![Discord](https://www.shieldcn.dev/discord/members/QhfZyrcfSE.svg?variant=secondary)](https://discord.gg/QhfZyrcfSE)
 
 </div>
 
@@ -12,9 +15,13 @@ Novent detects your session, records every lap automatically, and turns the data
 
 ## Screenshots
 
-<img src="docs/cornerview.png" alt="Novent dashboard" width="697" />
+<div align="center">
 
-<img src="docs/Pasted%20image%2020260726152143.png" alt="Novent lap analysis" width="697" />
+<img src="docs/cornerview.png" alt="Novent dashboard" width="820" />
+
+<img src="docs/Pasted%20image%2020260726152143.png" alt="Novent lap analysis" width="820" />
+
+</div>
 
 ---
 
