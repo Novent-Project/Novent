@@ -2,10 +2,10 @@
 
 <img src="docs/banner.svg" alt="Novent" width="100%" />
 
-[![badge](https://shieldcn.dev/github/Novent-Project/Novent/stars.svg?variant=secondary&size=default&theme=neutral&font=geist)](https://github.com/Novent-Project/Novent)
-[![badge](https://shieldcn.dev/github/Novent-Project/Novent/downloads.svg?variant=secondary&size=default&theme=neutral&font=geist)](https://github.com/Novent-Project/Novent/releases)
-[![badge](https://shieldcn.dev/github/Novent-Project/Novent/contributors.svg?variant=secondary&size=default&theme=neutral&font=geist)](https://github.com/Novent-Project/Novent/graphs/contributors)
-[![Discord](https://www.shieldcn.dev/discord/members/QhfZyrcfSE.svg?variant=secondary&size=default&theme=neutral&font=geist)](https://discord.gg/QhfZyrcfSE)
+[![badge](https://shieldcn.dev/github/Novent-Project/Novent/stars.svg?variant=secondary&color=142a1a&size=default&theme=neutral&font=geist)](https://github.com/Novent-Project/Novent)
+[![badge](https://shieldcn.dev/github/Novent-Project/Novent/downloads.svg?variant=secondary&color=142a1a&size=default&theme=neutral&font=geist)](https://github.com/Novent-Project/Novent/releases)
+[![badge](https://shieldcn.dev/github/Novent-Project/Novent/contributors.svg?variant=secondary&color=142a1a&size=default&theme=neutral&font=geist)](https://github.com/Novent-Project/Novent/graphs/contributors)
+[![Discord](https://www.shieldcn.dev/discord/members/QhfZyrcfSE.svg?variant=secondary&color=142a1a&size=default&theme=neutral&font=geist)](https://discord.gg/QhfZyrcfSE)
 
 </div>
 
