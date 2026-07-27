@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
@@ -27,6 +30,41 @@ jobs:
         with:
           workspaces: src-tauri
 
+      - name: Compute next version
+        id: version
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Latest release in THIS repo (repo A's versions are unrelated).
+          LATEST=$(gh release view --repo "$GITHUB_REPOSITORY" \
+                     --json tagName --jq .tagName 2>/dev/null || echo "")
+
+          if [ -z "$LATEST" ]; then
+            NEXT="v0.1"
+          else
+            MAJOR=$(echo "${LATEST#v}" | cut -d. -f1)
+            MINOR=$(echo "${LATEST#v}" | cut -d. -f2)
+            NEXT="v${MAJOR}.$((MINOR + 1))"
+          fi
+
+          echo "Previous: ${LATEST:-none}  ->  Next: $NEXT"
+          echo "tag=$NEXT"            >> "$GITHUB_OUTPUT"
+          echo "number=${NEXT#v}"     >> "$GITHUB_OUTPUT"
+
+      - name: Stamp version into tauri.conf.json
+        shell: bash
+        run: |
+          # Tauri needs full semver (x.y.z), so append .0
+          node -e "
+            const fs = require('fs');
+            const p  = 'src-tauri/tauri.conf.json';
+            const c  = JSON.parse(fs.readFileSync(p, 'utf8'));
+            c.version = '${{ steps.version.outputs.number }}.0';
+            fs.writeFileSync(p, JSON.stringify(c, null, 2));
+            console.log('version =', c.version);
+          "
+
       - name: Download sidecar
         shell: bash
         env:
@@ -44,4 +82,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          tagName: ${{ steps.version.outputs.tag }}
+          releaseName: Novent ${{ steps.version.outputs.tag }}
+          releaseBody: |
+            Automated build from ${{ github.sha }}.
+          releaseDraft: false
+          prerelease: false
           includeDebug: false
