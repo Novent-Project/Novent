@@ -49,7 +49,8 @@ jobs:
             MINOR="${BASH_REMATCH[2]}"
             NEXT_NUM="${MAJOR}.$((MINOR + 1))"
           else
-            NEXT_NUM="0.1"
+            # no prior release found — v0.1-0.3 already exist elsewhere, resume at 0.4
+            NEXT_NUM="0.4"
           fi
 
           echo "Previous: [${LATEST:-none}]  ->  Next: [v${NEXT_NUM}]"
@@ -79,11 +80,12 @@ jobs:
 
           node -e "console.log('confirmed:', JSON.stringify(require('./src-tauri/tauri.conf.json').version))"
 
-      - name: Download sidecar
+      - name: Download backend sidecar
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -euo pipefail
           mkdir -p src-tauri/binaries
           gh release download --repo Novent-Project/Novent-Backend \
             --pattern 'backend-x86_64-pc-windows-msvc.exe' \
@@ -92,14 +94,18 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - uses: tauri-apps/tauri-action@v0
+      - name: Build (exe only, no installers)
+        run: pnpm tauri build --no-bundle
+
+      - name: Create release
+        shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tagName: ${{ steps.version.outputs.tag }}
-          releaseName: Novent ${{ steps.version.outputs.tag }}
-          releaseBody: |
-            Automated build from ${{ github.sha }}.
-          releaseDraft: false
-          prerelease: false
-          includeDebug: false
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          ls -la src-tauri/target/release/*.exe
+          gh release create "${{ steps.version.outputs.tag }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Novent ${{ steps.version.outputs.tag }}" \
+            --notes "Automated build from ${{ github.sha }}." \
+            src-tauri/target/release/*.exe
