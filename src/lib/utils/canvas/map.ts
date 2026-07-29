@@ -100,7 +100,7 @@ export function fitMap(
 	return {
 		scale,
 		offsetX: w / 2 - ((minX + maxX) / 2) * scale,
-		offsetY: h / 2 + ((minZ + maxZ) / 2) * scale,
+		offsetY: h / 2 - ((minZ + maxZ) / 2) * scale,
 	};
 }
 
@@ -189,7 +189,7 @@ function renderStaticLayer(
 
 	const toScreen = (wx: number, wz: number) => ({
 		sx: wx  *  scale + offsetX + m,
-		sz: wz  * -scale + offsetY + m,
+		sz: wz  *  scale + offsetY + m,
 	});
 
 	if (boundaries?.inner && boundaries?.outer) {
@@ -378,7 +378,7 @@ export function drawMap(
 
 	const toScreen = (wx: number, wz: number) => ({
 		sx: wx  *  scale + offsetX,
-		sz: wz  * -scale + offsetY,
+		sz: wz  *  scale + offsetY,
 	});
 
 	for (const comp of compLaps) {

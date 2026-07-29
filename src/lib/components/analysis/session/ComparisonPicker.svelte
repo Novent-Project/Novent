@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { slide } from 'svelte/transition';
-	import { formatName, formatDateTime } from '$lib/utils';
+	import { formatName, formatDateTime, popoverMute } from '$lib/utils';
 	import type { Lap } from '$lib/api';
 
 	interface Props {
@@ -29,7 +29,7 @@
 		+ Compare lap
 	</button>
 	{#if menuOpen}
-		<div class="comp-menu hud-card" transition:slide={{ duration: 200 }}>
+		<div class="comp-menu hud-card" transition:slide={{ duration: 200 }} use:popoverMute>
 			{#each candidates as l (l.uuid)}
 				<button class="comp-opt" onclick={() => pick(l)}>
 					<span class="comp-opt-info">
@@ -73,7 +73,11 @@
 	}
 
 	.comp-menu {
-		margin-top: 6px;
+		position: absolute;
+		top: calc(100% + 6px);
+		left: 0;
+		right: 0;
+		z-index: 30;
 		max-height: 260px;
 		overflow-y: auto;
 		padding: 4px;

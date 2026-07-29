@@ -9,6 +9,26 @@
 
 	let { lap }: Props = $props();
 
+	const EXPANDED_KEY = 'novent:session-header-expanded';
+
+	function loadExpanded(): boolean {
+		try {
+			return localStorage.getItem(EXPANDED_KEY) !== '0';
+		} catch {
+			return true;
+		}
+	}
+
+	let expanded = $state(loadExpanded());
+
+	function toggle() {
+		expanded = !expanded;
+		try {
+			localStorage.setItem(EXPANDED_KEY, expanded ? '1' : '0');
+		} catch {
+		}
+	}
+
 	let car      = $derived(lap?.car ?? '');
 	let track    = $derived(lap?.track ?? '');
 	let game     = $derived(lap?.game ?? '');
@@ -18,46 +38,53 @@
 	let mode     = $derived(lap?.session_type || lap?.tyre_compound || undefined);
 </script>
 
-<div class="hud-card session-header">
+<div class="hud-card session-header" class:compact={!expanded}>
 	<div class="logo-slot"><Icon {game} size={22} /></div>
 
 	<div class="body">
 		<div class="top-row">
 			<span class="car">{formatName(car)}</span>
+			<button class="collapse-btn" onclick={toggle} aria-label={expanded ? 'Collapse session info' : 'Expand session info'} title={expanded ? 'Collapse' : 'Expand'}>
+				<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" class:flipped={!expanded}>
+					<path d="M4 10l4-4 4 4" stroke-linecap="round" stroke-linejoin="round" />
+				</svg>
+			</button>
 		</div>
 
 		<div class="meta-row">
 			<span class="meta-item">{formatName(track)}</span>
-			<span class="dot">•</span>
-			<span class="meta-item">
-				<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-					<circle cx="8" cy="8" r="5.5" />
-					<path d="M8 5v3l2 1.5" />
-				</svg>
-				<span class="mono">{dateTime}</span>
-			</span>
-			{#if airTemp}
+			{#if expanded}
 				<span class="dot">•</span>
 				<span class="meta-item">
 					<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-						<path d="M6.5 9V3.5a1.5 1.5 0 0 1 3 0V9a2.5 2.5 0 1 1-3 0z" />
+						<circle cx="8" cy="8" r="5.5" />
+						<path d="M8 5v3l2 1.5" />
 					</svg>
-					<span class="mono">{airTemp}°C</span>
-					<span class="temp-tag">Air</span>
+					<span class="mono">{dateTime}</span>
 				</span>
-			{/if}
-			{#if roadTemp}
-				<span class="dot">•</span>
-				<span class="meta-item">
-					<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-						<path d="M6.5 9V3.5a1.5 1.5 0 0 1 3 0V9a2.5 2.5 0 1 1-3 0z" />
-					</svg>
-					<span class="mono">{roadTemp}°C</span>
-					<span class="temp-tag">Road</span>
-				</span>
-			{/if}
-			{#if mode}
-				<span class="mode-pill">{mode}</span>
+				{#if airTemp}
+					<span class="dot">•</span>
+					<span class="meta-item">
+						<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+							<path d="M6.5 9V3.5a1.5 1.5 0 0 1 3 0V9a2.5 2.5 0 1 1-3 0z" />
+						</svg>
+						<span class="mono">{airTemp}°C</span>
+						<span class="temp-tag">Air</span>
+					</span>
+				{/if}
+				{#if roadTemp}
+					<span class="dot">•</span>
+					<span class="meta-item">
+						<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+							<path d="M6.5 9V3.5a1.5 1.5 0 0 1 3 0V9a2.5 2.5 0 1 1-3 0z" />
+						</svg>
+						<span class="mono">{roadTemp}°C</span>
+						<span class="temp-tag">Road</span>
+					</span>
+				{/if}
+				{#if mode}
+					<span class="mode-pill">{mode}</span>
+				{/if}
 			{/if}
 		</div>
 	</div>
@@ -70,6 +97,11 @@
 		align-items: center;
 		gap: 14px;
 		padding: 14px 18px;
+	}
+
+	.session-header.compact {
+		padding: 10px 14px;
+		gap: 10px;
 	}
 
 	.logo-slot {
@@ -86,11 +118,21 @@
 		color: var(--color-text);
 	}
 
+	.compact .logo-slot {
+		width: 32px;
+		height: 32px;
+	}
+
 	.body {
+		flex: 1;
 		display: flex;
 		flex-direction: column;
 		gap: 4px;
 		min-width: 0;
+	}
+
+	.compact .body {
+		gap: 1px;
 	}
 
 	.top-row {
@@ -109,6 +151,38 @@
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
+	}
+
+	.compact .car {
+		font-size: 14px;
+	}
+
+	.collapse-btn {
+		flex: 0 0 auto;
+		width: 20px;
+		height: 20px;
+		display: grid;
+		place-items: center;
+		background: none;
+		border: none;
+		border-radius: var(--radius-sm);
+		color: var(--color-subtle);
+		cursor: pointer;
+		padding: 0;
+	}
+
+	.collapse-btn:hover {
+		color: var(--color-text);
+	}
+
+	.collapse-btn svg {
+		width: 14px;
+		height: 14px;
+		transition: transform 0.15s ease;
+	}
+
+	.collapse-btn svg.flipped {
+		transform: rotate(180deg);
 	}
 
 	.meta-row {

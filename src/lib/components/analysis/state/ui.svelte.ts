@@ -1,4 +1,5 @@
 import { prefs, type GraphPlacement } from '$lib/state/prefs.svelte';
+import { resetAllWidgets } from '$lib/utils';
 
 export type View = 'sessions' | 'telemetry';
 export type { GraphPlacement };
@@ -6,12 +7,29 @@ export type { GraphPlacement };
 export class UiState {
 	view = $state<View>('sessions');
 
+	widgetVisible(key: string): boolean {
+		return prefs.widgetVisible(key);
+	}
+
+	setWidgetVisible(key: string, visible: boolean) {
+		prefs.setWidgetVisible(key, visible);
+	}
+
+	resetLayout() {
+		prefs.showAllWidgets();
+		resetAllWidgets();
+	}
+
 	get traceZoom(): number {
 		return prefs.traceZoom;
 	}
 
 	set traceZoom(value: number) {
 		prefs.traceZoom = value;
+	}
+
+	get flipSide(): boolean {
+		return prefs.flipSide;
 	}
 
 	get graphPlacement(): GraphPlacement {

@@ -1,4 +1,4 @@
-import { fetchTelemetry, fetchBoundaries, type Lap, type TrackBoundaries } from '$lib/api';
+import { fetchTelemetry, fetchBoundaries, fetchSessions, fetchSessionLaps, type Lap, type TrackBoundaries } from '$lib/api';
 import { downsample, type Trace, type DownsampledTrace } from '$lib/utils/canvas/shared';
 import { smoothBoundary } from '$lib/utils/canvas/map';
 import {
@@ -221,24 +221,53 @@ export class AnalysisState {
 		}));
 	});
 
-	compCandidates = $derived.by(() =>
-		this.data.laps.filter(l =>
-			l.uuid !== this.selectedLap?.uuid &&
-			!this.compLaps.some(c => c.lap.uuid === l.uuid) &&
-			(!this.selectedLap || (
-				l.track === this.selectedLap.track &&
-				(l.layout ?? '') === (this.selectedLap.layout ?? '')
-			))
-		)
-	);
+	trackLaps = $state.raw<Lap[]>([]);
+
+	compCandidates = $derived.by(() => {
+		const sel  = this.selectedLap;
+		const seen = new Set<string>();
+		const out: Lap[] = [];
+		for (const l of [...this.data.laps, ...this.trackLaps]) {
+			if (!l.uuid || seen.has(l.uuid)) continue;
+			seen.add(l.uuid);
+			if (l.uuid === sel?.uuid) continue;
+			if (this.compLaps.some(c => c.lap.uuid === l.uuid)) continue;
+			if (sel && (l.track !== sel.track || (l.layout ?? '') !== (sel.layout ?? ''))) continue;
+			out.push(l);
+		}
+		out.sort((a, b) => (b.date_time ?? '').localeCompare(a.date_time ?? ''));
+		return out;
+	});
+
+	async #loadTrackLaps(lap: Lap, token: number) {
+		try {
+			const sessions = await fetchSessions();
+			if (token !== this.#token) return;
+			const matching = sessions
+				.filter(s =>
+					s.track === lap.track &&
+					(s.layout ?? '') === (lap.layout ?? '') &&
+					s.lap_count > 0
+				)
+				.sort((a, b) => (b.started_at ?? '').localeCompare(a.started_at ?? ''))
+				.slice(0, 20);
+			const lapLists = await Promise.all(matching.map(s => fetchSessionLaps(s.id).catch(() => [])));
+			if (token !== this.#token) return;
+			this.trackLaps = lapLists.flat();
+		} catch {
+			if (token === this.#token) this.trackLaps = [];
+		}
+	}
 
 	async selectLap(lap: Lap) {
 		const token = ++this.#token;
 		this.stopPlayback();
 		this.selectedLap = lap;
 		this.compLaps    = [];
+		this.trackLaps   = [];
 		this.#compIdxHints.clear();
 		this.fitKey++;
+		void this.#loadTrackLaps(lap, token);
 
 		const lapTimeSec = parseLapTime(lap.lap_time || lap.time || '');
 		const data       = await fetchTelemetry(lap.uuid);

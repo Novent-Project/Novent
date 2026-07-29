@@ -50,13 +50,13 @@
 		const spanZ = maxZ - minZ || 1;
 		const scale = Math.min((VB_W - PAD * 2) / spanX, (vbHeight - PAD * 2) / spanZ);
 		const offsetX = VB_W / 2 - ((minX + maxX) / 2) * scale;
-		const offsetY = vbHeight / 2 + ((minZ + maxZ) / 2) * scale;
+		const offsetY = vbHeight / 2 - ((minZ + maxZ) / 2) * scale;
 
 		const step = Math.max(1, Math.floor(pts.length / MAX_POINTS));
 		let d = '';
 		for (let i = 0; i < pts.length; i += step) {
 			const sx = (pts[i].x * scale + offsetX).toFixed(1);
-			const sy = (pts[i].z * -scale + offsetY).toFixed(1);
+			const sy = (pts[i].z * scale + offsetY).toFixed(1);
 			d += i === 0 ? `M${sx} ${sy}` : ` L${sx} ${sy}`;
 		}
 		return d + ' Z';

@@ -12,9 +12,10 @@
 		appZoom:   number;
 		traceZoom: number;
 		graphPlacement: 'bottom' | 'side';
+		flipSide: boolean;
 	}
 
-	let { appZoom = $bindable(), traceZoom = $bindable(), graphPlacement = $bindable() }: Props = $props();
+	let { appZoom = $bindable(), traceZoom = $bindable(), graphPlacement = $bindable(), flipSide = $bindable() }: Props = $props();
 
 	const TRACE_ZOOM_MIN     = 0.5;
 	const TRACE_ZOOM_MAX     = 4;
@@ -95,6 +96,17 @@
 			<div class="seg">
 				<button class="seg-btn" class:active={graphPlacement === 'bottom'} onclick={() => graphPlacement = 'bottom'}>Bottom</button>
 				<button class="seg-btn" class:active={graphPlacement === 'side'} onclick={() => graphPlacement = 'side'}>Side</button>
+			</div>
+		</div>
+
+		<div class="row">
+			<div class="row-label">
+				<span>Flip side layout</span>
+				<span class="row-sub">Widgets on the right, side graphs slide out from the left</span>
+			</div>
+			<div class="seg">
+				<button class="seg-btn" class:active={!flipSide} onclick={() => flipSide = false}>Off</button>
+				<button class="seg-btn" class:active={flipSide} onclick={() => flipSide = true}>On</button>
 			</div>
 		</div>
 	</div>

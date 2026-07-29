@@ -50,9 +50,9 @@
 		const pad   = 0.78;
 		const scale = Math.min((boxW * pad) / (maxX - minX || 1), (boxH * pad) / (maxZ - minZ || 1));
 		const offX  = boxW / 2 - ((minX + maxX) / 2) * scale;
-		const offY  = boxH / 2 + ((minZ + maxZ) / 2) * scale;
+		const offY  = boxH / 2 - ((minZ + maxZ) / 2) * scale;
 		const sx = (x: number) => x * scale + offX;
-		const sy = (z: number) => -z * scale + offY;
+		const sy = (z: number) => z * scale + offY;
 
 		ctx.beginPath();
 		ctx.strokeStyle = 'rgba(255,255,255,0.28)';

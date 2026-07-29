@@ -58,6 +58,7 @@
     bind:appZoomAuto={data.appZoomAuto}
     bind:traceZoom={prefs.traceZoom}
     bind:graphPlacement={prefs.graphPlacement}
+    bind:flipSide={prefs.flipSide}
     onClose={() => (prefs.settingsOpen = false)}
   />
 {/if}

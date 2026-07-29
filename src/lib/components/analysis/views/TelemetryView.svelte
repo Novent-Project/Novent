@@ -9,6 +9,7 @@
 	import HudPlaybar from '$lib/components/analysis/telemetry/HudPlaybar.svelte';
 	import GraphSidebar from '$lib/components/analysis/telemetry/GraphSidebar.svelte';
 	import GForceWidget from '$lib/components/analysis/telemetry/GForceWidget.svelte';
+	import WidgetManager from '$lib/components/analysis/WidgetManager.svelte';
 	import { fly } from 'svelte/transition';
 	import { ZOOM_UI_MIN, ZOOM_UI_MAX, MAX_COMP_LAPS, type AnalysisState, type MapView, type UiState } from '$lib/components/analysis/state';
 	import { draggable } from '$lib/utils';
@@ -48,61 +49,81 @@
 </script>
 
 <div class="hud">
-	<div class="hud-main" data-drag-bounds bind:clientWidth={hudW} bind:clientHeight={hudH}>
+	<div class="hud-main" class:flipped={ui.flipSide} data-drag-bounds bind:clientWidth={hudW} bind:clientHeight={hudH}>
 		<TrackMap {analysis} {map} />
 
 		<div class="ov ov-topleft" style:zoom={hudScale} bind:clientHeight={topStackH}>
-			<div use:draggable={'session-header'}>
-				<SessionHeaderCard lap={analysis.selectedLap} />
-			</div>
-			<div use:draggable={'standings'}>
-				<StandingsCard
-					entries={analysis.standings}
-					candidates={analysis.compCandidates}
-					onAddComparison={(lap) => analysis.addCompLap(lap)}
-					onRemoveComparison={(uuid) => analysis.removeCompLap(uuid)}
-					maxReached={analysis.compLaps.length >= MAX_COMP_LAPS}
-				/>
-			</div>
-			<div class="segment-slot" use:draggable={'segment-map'}>
-				<SegmentMap {analysis} />
-			</div>
-		</div>
-
-		<div class="ov ov-telemetry" style:zoom={hudScale}>
-			{#if analysis.selectedLap}
-				<div class="tel-slot" use:draggable={'telemetry-primary'}>
-					<TelemetryWidget driver={analysis.primaryDriver} />
+			{#if ui.widgetVisible('session-header')}
+				<div use:draggable={'session-header'}>
+					<SessionHeaderCard lap={analysis.selectedLap} />
 				</div>
 			{/if}
-			{#each analysis.compEntries as entry, i (entry.uuid)}
-				<div class="tel-slot" use:draggable={{ key: `telemetry-comp-${i}`, persist: false }}>
-					<TelemetryWidget
-						driver={entry.driver}
-						ghostVisible={entry.ghostVisible}
-						onToggleGhost={() => analysis.toggleGhost(entry.uuid)}
+			{#if ui.widgetVisible('standings')}
+				<div use:draggable={'standings'}>
+					<StandingsCard
+						entries={analysis.standings}
+						candidates={analysis.compCandidates}
+						onAddComparison={(lap) => analysis.addCompLap(lap)}
+						onRemoveComparison={(uuid) => analysis.removeCompLap(uuid)}
+						maxReached={analysis.compLaps.length >= MAX_COMP_LAPS}
 					/>
 				</div>
-			{/each}
+			{/if}
+			{#if ui.widgetVisible('segment-map')}
+				<div class="segment-slot" use:draggable={'segment-map'}>
+					<SegmentMap {analysis} />
+				</div>
+			{/if}
 		</div>
 
+		{#if ui.widgetVisible('telemetry')}
+			<div class="ov ov-telemetry" style:zoom={hudScale}>
+				{#if analysis.selectedLap}
+					<div class="tel-slot" use:draggable={'telemetry-primary'}>
+						<TelemetryWidget driver={analysis.primaryDriver} />
+					</div>
+				{/if}
+				{#each analysis.compEntries as entry, i (entry.uuid)}
+					<div class="tel-slot" use:draggable={{ key: `telemetry-comp-${i}`, persist: false }}>
+						<TelemetryWidget
+							driver={entry.driver}
+							ghostVisible={entry.ghostVisible}
+							onToggleGhost={() => analysis.toggleGhost(entry.uuid)}
+						/>
+					</div>
+				{/each}
+			</div>
+		{/if}
+
 		<div class="ov ov-bottomleft" style:zoom={hudScale} bind:clientHeight={bottomStackH}>
-			<div use:draggable={'g-force'}>
-				<GForceWidget {analysis} />
-			</div>
-			<div use:draggable={'sector-comparison'}>
-				<SectorComparison sectors={analysis.sectors} />
-			</div>
+			{#if ui.widgetVisible('g-force')}
+				<div use:draggable={'g-force'}>
+					<GForceWidget {analysis} />
+				</div>
+			{/if}
+			{#if ui.widgetVisible('sector-comparison')}
+				<div use:draggable={'sector-comparison'}>
+					<SectorComparison sectors={analysis.sectors} />
+				</div>
+			{/if}
 		</div>
 
 		<div class="ov ov-bottomcenter" style:zoom={hudScale}>
-			<div use:draggable={'zoom-control'}>
-				<ZoomControl value={map.zoomLevel} min={ZOOM_UI_MIN} max={ZOOM_UI_MAX} onChange={(v) => map.setZoom(v)} />
-			</div>
+			{#if ui.widgetVisible('zoom-control')}
+				<div use:draggable={'zoom-control'}>
+					<ZoomControl value={map.zoomLevel} min={ZOOM_UI_MIN} max={ZOOM_UI_MAX} onChange={(v) => map.setZoom(v)} />
+				</div>
+			{/if}
 		</div>
 
+		{#if !(graphsOpen && ui.graphPlacement === 'side')}
+			<div class="ov ov-topright" style:zoom={hudScale}>
+				<WidgetManager {ui} align={ui.flipSide ? 'left' : 'right'} />
+			</div>
+		{/if}
+
 		{#if graphsOpen && ui.graphPlacement === 'side'}
-			<div class="ov ov-right" style:zoom={hudScale} transition:fly={{ x: 380, duration: 260 }}>
+			<div class="ov ov-right" style:zoom={hudScale} transition:fly={{ x: ui.flipSide ? -380 : 380, duration: 260 }}>
 				<GraphSidebar {analysis} {map} onClose={() => (graphsOpen = false)} />
 			</div>
 		{/if}
@@ -133,6 +154,7 @@
 
 	.ov { position: absolute; z-index: 5; pointer-events: none; }
 	.ov > :global(*) { pointer-events: auto; }
+	.ov > :global(*:has(.comp-menu)) { z-index: 10; }
 
 	.ov-topleft {
 		top: 14px;
@@ -172,6 +194,12 @@
 		transform: translateX(-50%);
 	}
 
+	.ov-topright {
+		top: 14px;
+		right: 14px;
+		z-index: 7;
+	}
+
 	.ov-right {
 		top: 14px;
 		right: 14px;
@@ -193,5 +221,31 @@
 		flex: 0 0 auto;
 		width: 300px;
 		height: 244px;
+	}
+
+	.hud-main.flipped .ov-topleft {
+		left: auto;
+		right: 14px;
+	}
+
+	.hud-main.flipped .ov-telemetry {
+		left: auto;
+		right: 328px;
+	}
+
+	.hud-main.flipped .ov-bottomleft {
+		left: auto;
+		right: 14px;
+		align-items: flex-end;
+	}
+
+	.hud-main.flipped .ov-topright {
+		right: auto;
+		left: 14px;
+	}
+
+	.hud-main.flipped .ov-right {
+		right: auto;
+		left: 14px;
 	}
 </style>

@@ -13,49 +13,107 @@ if (typeof localStorage !== 'undefined') {
 }
 const DRAG_THRESHOLD = 4;
 const SNAP = 10;
-const SNAP_RELEASE = 16;
 const EDGE_PAD = 14;
 const GAP = 12;
 const INTERACTIVE =
 	'a, button, input, select, textarea, label, [role="button"], [role="slider"], [contenteditable="true"], .no-drag';
 
-const IDLE_TRANSITION = 'transform 0.25s cubic-bezier(0.22, 1, 0.36, 1)';
+const IDLE_TRANSITION = 'transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.18s ease';
+const MUTED_CLASS = 'hud-widget-muted';
 
 interface Point {
 	x: number;
 	y: number;
 }
 
-interface Base {
-	left: number;
-	top: number;
-	w: number;
-	h: number;
+interface Instance {
+	node:       HTMLElement;
+	reapply:    () => void;
+	reset:      () => void;
+	isDragging: () => boolean;
 }
 
-const widgets = new Set<HTMLElement>();
+const instances = new Set<Instance>();
 
-const settlers = new Set<() => boolean>();
-export function settleWidgets() {
-	for (let round = 0; round < 4; round++) {
-		let moved = false;
-		for (const settle of settlers) {
-			if (settle()) moved = true;
+const popovers = new Set<Element>();
+
+function updateMuted() {
+	const rects: { r: DOMRect; owner: Element | null }[] = [];
+	for (const el of popovers) {
+		if (!el.isConnected) continue;
+		rects.push({ r: el.getBoundingClientRect(), owner: el.closest('[data-drag-key]') });
+	}
+	for (const inst of instances) {
+		const node = inst.node;
+		let mute = false;
+		if (node.isConnected && !inst.isDragging()) {
+			const nr = node.getBoundingClientRect();
+			for (const { r, owner } of rects) {
+				if (owner === node) continue;
+				if (nr.left < r.right && nr.right > r.left && nr.top < r.bottom && nr.bottom > r.top) {
+					mute = true;
+					break;
+				}
+			}
 		}
-		if (!moved) break;
+		node.classList.toggle(MUTED_CLASS, mute);
 	}
 }
+
+const popoverObserver = typeof ResizeObserver !== 'undefined'
+	? new ResizeObserver(updateMuted)
+	: null;
+
+export const popoverMute: import('svelte/action').Action<HTMLElement> = (node) => {
+	popovers.add(node);
+	popoverObserver?.observe(node);
+	updateMuted();
+	return {
+		destroy() {
+			popovers.delete(node);
+			popoverObserver?.unobserve(node);
+			updateMuted();
+		},
+	};
+};
+
+export function resetWidget(key: string) {
+	try {
+		localStorage.removeItem(STORAGE_PREFIX + key);
+	} catch {
+	}
+	for (const inst of instances) {
+		if (inst.node.dataset.dragKey === key) inst.reset();
+	}
+}
+
+export function resetAllWidgets() {
+	try {
+		for (let i = localStorage.length - 1; i >= 0; i--) {
+			const k = localStorage.key(i);
+			if (k?.startsWith(STORAGE_PREFIX)) localStorage.removeItem(k);
+		}
+	} catch {
+	}
+	for (const inst of instances) inst.reset();
+}
+
+const resizeObserver = typeof ResizeObserver !== 'undefined'
+	? new ResizeObserver(() => {
+		for (const inst of instances) inst.reapply();
+		updateMuted();
+	})
+	: null;
 
 type DragParams = string | {
 	key: string;
 	persist?: boolean;
-	spawnBelow?: string;
 };
 
-function normalizeParams(p: DragParams): { key: string; persist: boolean; spawnBelow: string | null } {
+function normalizeParams(p: DragParams): { key: string; persist: boolean } {
 	return typeof p === 'string'
-		? { key: p, persist: true, spawnBelow: null }
-		: { key: p.key, persist: p.persist ?? true, spawnBelow: p.spawnBelow ?? null };
+		? { key: p, persist: true }
+		: { key: p.key, persist: p.persist ?? true };
 }
 
 function loadOffset(key: string): Point | null {
@@ -77,32 +135,13 @@ function saveOffset(key: string, offset: Point) {
 	}
 }
 
-function snapAxis(start: number, size: number, edges: { flush: number[]; beside: number[] }): number | null {
-	let best: number | null = null;
-	let bestDist = SNAP;
-	const consider = (target: number) => {
-		const d = Math.abs(target - start);
-		if (d < bestDist) {
-			bestDist = d;
-			best = target;
-		}
-	};
-	for (const e of edges.flush) {
-		consider(e);
-		consider(e - size);
-	}
-	for (const e of edges.beside) {
-		consider(e + GAP);
-		consider(e - GAP - size);
-	}
-	return best;
-}
-
 export const draggable: Action<HTMLElement, DragParams> = (node, params) => {
-	let { key, persist, spawnBelow } = normalizeParams(params);
+	let { key, persist } = normalizeParams(params);
 	node.dataset.dragKey = key;
-	let offset: Point = { x: 0, y: 0 };
-	const stored = persist ? loadOffset(key) : null;
+
+	let intent: Point = (persist ? loadOffset(key) : null) ?? { x: 0, y: 0 };
+	let applied: Point = { x: 0, y: 0 };
+	let dragging = false;
 
 	const zf = () => {
 		const w = node.offsetWidth;
@@ -110,283 +149,165 @@ export const draggable: Action<HTMLElement, DragParams> = (node, params) => {
 		return node.getBoundingClientRect().width / w || 1;
 	};
 
+	const boundsEl = node.closest('[data-drag-bounds]');
+
+	const natural = () => {
+		const s = zf();
+		const r = node.getBoundingClientRect();
+		return { left: r.left - applied.x * s, top: r.top - applied.y * s, w: r.width, h: r.height, s };
+	};
+
 	const apply = () => {
-		if (!offset.x && !offset.y) {
-			node.style.transform = '';
-			return;
+		const { left, top, w, h, s } = natural();
+		let x = intent.x, y = intent.y;
+		const b = boundsEl?.getBoundingClientRect();
+		if (b && w && h && s) {
+			x = Math.max(Math.min(x, (b.right - w - left) / s), (b.left - left) / s);
+			y = Math.max(Math.min(y, (b.bottom - h - top) / s), (b.top - top) / s);
 		}
-		const s = zf();
-		node.style.transform = `translate(${offset.x / s}px, ${offset.y / s}px)`;
+		applied = { x: Math.round(x), y: Math.round(y) };
+		node.style.transform = applied.x || applied.y ? `translate(${applied.x}px, ${applied.y}px)` : '';
 	};
 
-	const persistOffset = () => {
-		if (!persist) return;
-		const s = zf();
-		saveOffset(key, { x: Math.round(offset.x / s), y: Math.round(offset.y / s) });
-	};
-
-	const measureBase = (): Base => {
-		const rect = node.getBoundingClientRect();
-		return { left: rect.left - offset.x, top: rect.top - offset.y, w: rect.width, h: rect.height };
-	};
-
-	const clamp = (candidate: Point, base: Base): Point => {
-		const bounds = node.closest('[data-drag-bounds]')?.getBoundingClientRect();
-		if (!bounds) return candidate;
-		return {
-			x: Math.round(Math.min(Math.max(candidate.x, bounds.left - base.left), bounds.right - base.w - base.left)),
-			y: Math.round(Math.min(Math.max(candidate.y, bounds.top - base.top), bounds.bottom - base.h - base.top)),
-		};
-	};
-
-	const siblingRects = (): DOMRect[] => {
-		const container = node.closest('[data-drag-bounds]');
-		const out: DOMRect[] = [];
-		for (const other of widgets) {
+	const snap = (cand: Point): Point => {
+		const { left, top, w, h, s } = natural();
+		const px = left + cand.x * s;
+		const py = top + cand.y * s;
+		const xE: number[] = [left];
+		const yE: number[] = [top];
+		const b = boundsEl?.getBoundingClientRect();
+		if (b) {
+			xE.push(b.left + EDGE_PAD, b.right - EDGE_PAD - w);
+			yE.push(b.top + EDGE_PAD, b.bottom - EDGE_PAD - h);
+		}
+		for (const inst of instances) {
+			const other = inst.node;
 			if (other === node || !other.isConnected) continue;
-			if (container && other.closest('[data-drag-bounds]') !== container) continue;
-			out.push(other.getBoundingClientRect());
+			if (other.closest('[data-drag-bounds]') !== boundsEl) continue;
+			const r = other.getBoundingClientRect();
+			xE.push(r.left, r.right - w, r.left - GAP - w, r.right + GAP);
+			yE.push(r.top, r.bottom - h, r.top - GAP - h, r.bottom + GAP);
 		}
-		return out;
+		let bx = px, by = py, bdx = SNAP, bdy = SNAP;
+		for (const e of xE) {
+			const d = Math.abs(e - px);
+			if (d < bdx) { bdx = d; bx = e; }
+		}
+		for (const e of yE) {
+			const d = Math.abs(e - py);
+			if (d < bdy) { bdy = d; by = e; }
+		}
+		return { x: (bx - left) / s, y: (by - top) / s };
 	};
-
-	let heldSnapX: number | null = null;
-	let heldSnapY: number | null = null;
-
-	const snap = (candidate: Point, base: Base): Point => {
-		const xEdges = { flush: [] as number[], beside: [] as number[] };
-		const yEdges = { flush: [] as number[], beside: [] as number[] };
-		xEdges.flush.push(base.left);
-		yEdges.flush.push(base.top);
-		const bounds = node.closest('[data-drag-bounds]')?.getBoundingClientRect();
-		if (bounds) {
-			xEdges.flush.push(bounds.left + EDGE_PAD, bounds.right - EDGE_PAD);
-			yEdges.flush.push(bounds.top + EDGE_PAD, bounds.bottom - EDGE_PAD);
-		}
-		for (const r of siblingRects()) {
-			xEdges.flush.push(r.left, r.right);
-			xEdges.beside.push(r.left, r.right);
-			yEdges.flush.push(r.top, r.bottom);
-			yEdges.beside.push(r.top, r.bottom);
-		}
-
-		const px = base.left + candidate.x;
-		const py = base.top + candidate.y;
-
-		let sx: number | null;
-		if (heldSnapX !== null && Math.abs(px - heldSnapX) < SNAP_RELEASE) sx = heldSnapX;
-		else sx = snapAxis(px, base.w, xEdges);
-		heldSnapX = sx;
-
-		let sy: number | null;
-		if (heldSnapY !== null && Math.abs(py - heldSnapY) < SNAP_RELEASE) sy = heldSnapY;
-		else sy = snapAxis(py, base.h, yEdges);
-		heldSnapY = sy;
-
-		return {
-			x: Math.round(sx !== null ? sx - base.left : candidate.x),
-			y: Math.round(sy !== null ? sy - base.top : candidate.y),
-		};
-	};
-
-	const firstHit = (cur: Point, base: Base, rects: DOMRect[]): DOMRect | null => {
-		const L = base.left + cur.x;
-		const T = base.top + cur.y;
-		for (const r of rects) {
-			if (L < r.right && L + base.w > r.left && T < r.bottom && T + base.h > r.top) return r;
-		}
-		return null;
-	};
-
-	const resolveCollisions = (candidate: Point, base: Base): Point | null => {
-		const rects = siblingRects();
-		let cur = { ...candidate };
-		for (let pass = 0; pass < 4; pass++) {
-			const hit = firstHit(cur, base, rects);
-			if (!hit) return cur;
-			const L = base.left + cur.x;
-			const T = base.top + cur.y;
-			const ox = Math.min(L + base.w, hit.right) - Math.max(L, hit.left) + 1;
-			const oy = Math.min(T + base.h, hit.bottom) - Math.max(T, hit.top) + 1;
-			if (ox < oy) cur.x += L + base.w / 2 < hit.left + hit.width / 2 ? -ox : ox;
-			else cur.y += T + base.h / 2 < hit.top + hit.height / 2 ? -oy : oy;
-			cur = clamp(cur, base);
-		}
-
-		const hit = firstHit(candidate, base, rects);
-		if (!hit) return candidate;
-		const options: Point[] = [
-			{ x: candidate.x, y: hit.top - GAP - base.h - base.top },
-			{ x: candidate.x, y: hit.bottom + GAP - base.top },
-			{ x: hit.left - GAP - base.w - base.left, y: candidate.y },
-			{ x: hit.right + GAP - base.left, y: candidate.y },
-		];
-		let best: Point | null = null;
-		let bestDist = Infinity;
-		for (const opt of options) {
-			const c = clamp(opt, base);
-			if (firstHit(c, base, rects)) continue;
-			const d = Math.hypot(c.x - candidate.x, c.y - candidate.y);
-			if (d < bestDist) {
-				bestDist = d;
-				best = c;
-			}
-		}
-		return best;
-	};
-
-	function settle(): boolean {
-		if (dragging) return false;
-		if (!offset.x && !offset.y) return false;
-		const base = measureBase();
-		const rects = siblingRects();
-		let cur = clamp(offset, base);
-		for (let pass = 0; pass < 4; pass++) {
-			const hit = firstHit(cur, base, rects);
-			if (!hit) break;
-			const L = base.left + cur.x;
-			const T = base.top + cur.y;
-			const ox = Math.min(L + base.w, hit.right) - Math.max(L, hit.left) + 1;
-			const oy = Math.min(T + base.h, hit.bottom) - Math.max(T, hit.top) + 1;
-			if (ox < oy) cur = clamp({ x: cur.x + (L + base.w / 2 < hit.left + hit.width / 2 ? -ox : ox), y: cur.y }, base);
-			else cur = clamp({ x: cur.x, y: cur.y + (T + base.h / 2 < hit.top + hit.height / 2 ? -oy : oy) }, base);
-		}
-		if (firstHit(cur, base, rects)) return false;
-		if (cur.x === offset.x && cur.y === offset.y) return false;
-		offset = cur;
-		apply();
-		persistOffset();
-		return true;
-	}
 
 	node.style.cursor = 'grab';
 	node.style.transition = IDLE_TRANSITION;
-	const raf = requestAnimationFrame(() => {
-		if (stored && (stored.x || stored.y)) {
-			const s = zf();
-			offset = { x: stored.x * s, y: stored.y * s };
-			const base = measureBase();
-			offset = resolveCollisions(clamp(offset, base), base) ?? { x: 0, y: 0 };
-			apply();
-			persistOffset();
-		} else if (spawnBelow) {
-			const target = node
-				.closest('[data-drag-bounds]')
-				?.querySelector(`[data-drag-key="${spawnBelow}"]`);
-			if (target && target !== node) {
-				const base = measureBase();
-				const r = target.getBoundingClientRect();
-				offset = clamp(
-					{ x: Math.round(r.left - base.left), y: Math.round(r.bottom + GAP - base.top) },
-					base
-				);
-				apply();
-			}
-		}
-	});
+	const raf = requestAnimationFrame(apply);
 
 	let startX = 0, startY = 0;
-	let startOffset: Point = offset;
-	let dragBase: Base = { left: 0, top: 0, w: 0, h: 0 };
-	let dragging = false;
+	let startIntent: Point = intent;
+	let dragScale = 1;
+	let pointerId = -1;
 
 	function onPointerDown(e: PointerEvent) {
-		if (e.button !== 0) return;
+		if (e.button !== 0 || pointerId !== -1) return;
 		if ((e.target as Element).closest(INTERACTIVE)) return;
+		pointerId = e.pointerId;
 		startX = e.clientX;
 		startY = e.clientY;
-		startOffset = offset;
-		dragBase = measureBase();
+		startIntent = { ...applied };
+		dragScale = zf();
 		dragging = false;
-		node.addEventListener('pointermove', onPointerMove);
-		node.addEventListener('pointerup', onPointerUp);
-		node.addEventListener('pointercancel', onPointerUp);
-		node.setPointerCapture(e.pointerId);
+		window.addEventListener('pointermove', onPointerMove, true);
+		window.addEventListener('pointerup', onPointerUp, true);
+		window.addEventListener('pointercancel', onPointerUp, true);
+		window.addEventListener('blur', endDrag);
 	}
 
 	function onPointerMove(e: PointerEvent) {
+		if (e.pointerId !== pointerId) return;
+		if (e.buttons === 0) {
+			endDrag();
+			return;
+		}
 		const dx = e.clientX - startX;
 		const dy = e.clientY - startY;
 		if (!dragging) {
 			if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
 			dragging = true;
-			heldSnapX = null;
-			heldSnapY = null;
-			node.style.pointerEvents = 'none';
 			node.style.zIndex = '50';
 			node.style.transition = 'none';
 			document.body.style.userSelect = 'none';
 			document.body.style.cursor = 'grabbing';
 		}
-		dragBase = measureBase();
-		let candidate: Point = { x: startOffset.x + dx, y: startOffset.y + dy };
-		if (!e.altKey) candidate = snap(candidate, dragBase);
-		offset = clamp(candidate, dragBase);
+		let cand: Point = { x: startIntent.x + dx / dragScale, y: startIntent.y + dy / dragScale };
+		if (!e.altKey) cand = snap(cand);
+		intent = cand;
 		apply();
+		if (popovers.size) updateMuted();
 	}
 
 	function onPointerUp(e: PointerEvent) {
-		node.removeEventListener('pointermove', onPointerMove);
-		node.removeEventListener('pointerup', onPointerUp);
-		node.removeEventListener('pointercancel', onPointerUp);
+		if (e.pointerId !== pointerId) return;
+		endDrag();
+	}
+
+	function endDrag() {
+		pointerId = -1;
+		window.removeEventListener('pointermove', onPointerMove, true);
+		window.removeEventListener('pointerup', onPointerUp, true);
+		window.removeEventListener('pointercancel', onPointerUp, true);
+		window.removeEventListener('blur', endDrag);
 		if (!dragging) return;
 		dragging = false;
-		node.style.pointerEvents = '';
 		node.style.zIndex = '';
 		node.style.transition = IDLE_TRANSITION;
 		document.body.style.userSelect = '';
 		document.body.style.cursor = '';
 
-		if (!e.altKey) {
-			const dropBase = measureBase();
-			offset = resolveCollisions(offset, dropBase) ?? clamp(startOffset, dropBase);
-			apply();
-		}
-		persistOffset();
+		intent = { ...applied };
+		if (persist) saveOffset(key, intent);
+		if (popovers.size) updateMuted();
 
 		const suppress = (ce: MouseEvent) => ce.stopPropagation();
 		window.addEventListener('click', suppress, { capture: true, once: true });
 		setTimeout(() => window.removeEventListener('click', suppress, { capture: true }), 0);
 	}
 
-	function onDblClick(e: MouseEvent) {
-		if ((e.target as Element).closest(INTERACTIVE)) return;
-		offset = { x: 0, y: 0 };
-		apply();
-		persistOffset();
-	}
+	const instance: Instance = {
+		node,
+		reapply() {
+			if (!dragging && node.isConnected) apply();
+		},
+		reset() {
+			intent = { x: 0, y: 0 };
+			if (persist) saveOffset(key, intent);
+			if (node.isConnected) apply();
+		},
+		isDragging: () => dragging,
+	};
 
 	node.addEventListener('pointerdown', onPointerDown);
-	node.addEventListener('dblclick', onDblClick);
-	widgets.add(node);
-	settlers.add(settle);
+	instances.add(instance);
+	resizeObserver?.observe(node);
+	if (boundsEl) resizeObserver?.observe(boundsEl);
 
 	return {
 		update(newParams: DragParams) {
 			const next = normalizeParams(newParams);
-			if (next.key === key && next.persist === persist && next.spawnBelow === spawnBelow) return;
+			if (next.key === key && next.persist === persist) return;
 			key = next.key;
 			persist = next.persist;
-			spawnBelow = next.spawnBelow;
 			node.dataset.dragKey = key;
-			const s = zf();
-			const reloaded = persist ? loadOffset(key) : null;
-			offset = reloaded ? { x: reloaded.x * s, y: reloaded.y * s } : { x: 0, y: 0 };
+			intent = (persist ? loadOffset(key) : null) ?? { x: 0, y: 0 };
 			apply();
 		},
 		destroy() {
-			widgets.delete(node);
-			settlers.delete(settle);
+			if (pointerId !== -1) endDrag();
+			instances.delete(instance);
+			resizeObserver?.unobserve(node);
 			cancelAnimationFrame(raf);
 			node.removeEventListener('pointerdown', onPointerDown);
-			node.removeEventListener('dblclick', onDblClick);
-			node.removeEventListener('pointermove', onPointerMove);
-			node.removeEventListener('pointerup', onPointerUp);
-			node.removeEventListener('pointercancel', onPointerUp);
-			if (dragging) {
-				document.body.style.userSelect = '';
-				document.body.style.cursor = '';
-			}
 		},
 	};
 };

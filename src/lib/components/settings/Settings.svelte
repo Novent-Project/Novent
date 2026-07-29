@@ -8,10 +8,11 @@
 		appZoomAuto: boolean;
 		traceZoom:   number;
 		graphPlacement: 'bottom' | 'side';
+		flipSide:    boolean;
 		onClose:     () => void;
 	}
 
-	let { gamePaths = $bindable(), appZoom = $bindable(), appZoomAuto = $bindable(), traceZoom = $bindable(), graphPlacement = $bindable(), onClose }: Props = $props();
+	let { gamePaths = $bindable(), appZoom = $bindable(), appZoomAuto = $bindable(), traceZoom = $bindable(), graphPlacement = $bindable(), flipSide = $bindable(), onClose }: Props = $props();
 
 	const NAV = [
 		{ id: 'general', label: 'General',        icon: 'general' },
@@ -76,7 +77,7 @@
 
 			<div class="content">
 				{#if activeSection === 'general'}
-					<GeneralSection bind:appZoom bind:traceZoom bind:graphPlacement />
+					<GeneralSection bind:appZoom bind:traceZoom bind:graphPlacement bind:flipSide />
 				{:else if activeSection === 'game'}
 					<GameDetectionSection bind:gamePaths />
 				{/if}
