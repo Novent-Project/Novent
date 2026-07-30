@@ -89,10 +89,11 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 8px;
+		gap: 6px;
 	}
 
 	.rail-slot {
+		position: relative;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -100,24 +101,34 @@
 		height: 32px;
 		flex-shrink: 0;
 		padding: 0;
-		border-radius: var(--radius-sm);
+		border-radius: 8px;
 		color: var(--color-muted);
-		background: var(--card-bg);
-		border: 1px solid var(--card-border);
+		background: none;
+		border: none;
 		text-decoration: none;
 		cursor: pointer;
 		font: inherit;
-		transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+		transition: color 0.12s ease, background 0.12s ease;
 	}
 
 	.rail-slot:hover {
 		color: var(--color-text);
-		background: var(--card-bg-hover);
+		background: var(--card-bg);
 	}
 
 	.rail-slot.active {
 		color: var(--color-accent);
-		background: var(--color-accent-dim);
-		border-color: var(--color-accent-border);
+		background: var(--card-bg);
+	}
+
+	.rail-slot.active::before {
+		content: "";
+		position: absolute;
+		left: -6px;
+		top: 25%;
+		bottom: 25%;
+		width: 2.5px;
+		border-radius: var(--radius-pill, 4px);
+		background: var(--color-accent);
 	}
 </style>
