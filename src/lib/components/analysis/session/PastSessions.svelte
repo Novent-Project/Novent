@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { slide } from 'svelte/transition';
 	import { formatName } from '$lib/utils';
-	import Icon from '$lib/components/chrome/Icon.svelte';
+	import GameLogo from '$lib/components/chrome/GameLogo.svelte';
+	import { Star, Calendar, FlagCheckered, CaretDown } from 'phosphor-svelte';
 
 	interface LapRow {
 		uuid: string;
@@ -78,11 +79,9 @@
 					<div class="col-main">
 						<div class="badge" class:fav-badge={session.kind === 'favorites'}>
 							{#if session.kind === 'favorites'}
-								<svg viewBox="0 0 16 16" fill="currentColor" stroke="none">
-									<path d="M8 1.5l1.9 3.85 4.25.62-3.07 3 .72 4.23L8 11.2 3.2 13.2l.72-4.23-3.07-3 4.25-.62z" />
-								</svg>
+								<Star size={18} weight="fill" />
 							{:else}
-								<Icon game={session.game} size={20} />
+								<GameLogo game={session.game} size={20} />
 							{/if}
 						</div>
 						<div class="names">
@@ -94,32 +93,18 @@
 					<div class="col driver">{session.driver || '—'}</div>
 
 					<div class="col meta">
-						<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-							<rect x="2.5" y="3" width="11" height="10.5" rx="1.5" />
-							<path d="M2.5 6.5h11M5.5 1.5v2M10.5 1.5v2" />
-						</svg>
+						<Calendar size={14} weight="regular" />
 						<span class="mono">{session.date || '—'}</span>
 					</div>
 
 					<div class="col meta">
-						<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-							<path d="M4 1.5v13M4 2.5h8l-2 3 2 3H4" />
-						</svg>
+						<FlagCheckered size={14} weight="regular" />
 						<span class="mono">{session.bestLap}</span>
 					</div>
 
 					<div class="col-actions">
 						<span class="lap-count mono">{session.laps.length}</span>
-						<svg
-							class="chevron"
-							class:open={expanded === session.id}
-							viewBox="0 0 16 16"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="1.5"
-						>
-							<path d="M4 6l4 4 4-4" stroke-linecap="round" stroke-linejoin="round" />
-						</svg>
+						<CaretDown class="chevron {expanded === session.id ? 'open' : ''}" size={13} weight="bold" />
 					</div>
 				</div>
 
@@ -146,17 +131,12 @@
 							<div class="col"></div>
 
 							<div class="col meta">
-								<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-									<rect x="2.5" y="3" width="11" height="10.5" rx="1.5" />
-									<path d="M2.5 6.5h11M5.5 1.5v2M10.5 1.5v2" />
-								</svg>
+								<Calendar size={14} weight="regular" />
 								<span class="mono">{lap.date}</span>
 							</div>
 
 							<div class="col meta" class:fastest={lap.lapTime === session.bestLap}>
-								<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-									<path d="M4 1.5v13M4 2.5h8l-2 3 2 3H4" />
-								</svg>
+								<FlagCheckered size={14} weight="regular" />
 								<span class="mono">{lap.lapTime}</span>
 							</div>
 
@@ -168,15 +148,7 @@
 									aria-label={lap.favorite ? 'Remove favorite' : 'Add favorite'}
 									onclick={(e) => handleToggle(e, lap.uuid)}
 								>
-									{#if lap.favorite}
-										<svg viewBox="0 0 16 16" fill="currentColor" stroke="none">
-											<path d="M8 1.5l1.9 3.85 4.25.62-3.07 3 .72 4.23L8 11.2 3.2 13.2l.72-4.23-3.07-3 4.25-.62z" />
-										</svg>
-									{:else}
-										<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-											<path d="M8 1.5l1.9 3.85 4.25.62-3.07 3 .72 4.23L8 11.2 3.2 13.2l.72-4.23-3.07-3 4.25-.62z" />
-										</svg>
-									{/if}
+									<Star size={15} weight={lap.favorite ? "fill" : "regular"} />
 								</button>
 							</div>
 						</div>

@@ -2,6 +2,7 @@
 	import GeneralSection from './sections/GeneralSection.svelte';
 	import GameDetectionSection from './sections/GameDetectionSection.svelte';
 	import AboutSection from './sections/AboutSection.svelte';
+	import { Sliders, Info, X, GameController } from 'phosphor-svelte';
 
 	interface Props {
 		gamePaths:   Record<string, string>;
@@ -15,11 +16,23 @@
 
 	let { gamePaths = $bindable(), appZoom = $bindable(), appZoomAuto = $bindable(), traceZoom = $bindable(), graphPlacement = $bindable(), flipSide = $bindable(), onClose }: Props = $props();
 
-	const NAV = [
-		{ id: 'general', label: 'General',        icon: 'general' },
-		{ id: 'game',    label: 'Game Detection', icon: 'controller' },
-		{ id: 'about',   label: 'About',          icon: 'info' },
+	const NAV_GROUPS = [
+		{
+			label: 'App',
+			items: [
+				{ id: 'general', label: 'General',        desc: 'Interface scale, graphs, and quit behavior.' },
+				{ id: 'game',    label: 'Game Detection', desc: 'Where Novent looks for your installed titles.' },
+			]
+		},
+		{
+			label: 'About',
+			items: [
+				{ id: 'about', label: 'About', desc: 'Version, updates, and links.' },
+			]
+		}
 	] as const;
+
+	const NAV = NAV_GROUPS.flatMap(g => g.items);
 
 	type SectionId = (typeof NAV)[number]['id'];
 
@@ -31,22 +44,13 @@
 	}
 </script>
 
-{#snippet navIcon(id: string)}
-	{#if id === 'controller'}
-		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-			<path d="M4 6.25h2M5 5.25v2M9.6 6.5h.01M11 5.4h.01"/>
-			<path d="M3.6 6h8.8a2 2 0 0 1 1.94 2.5l-.55 2.15a1.6 1.6 0 0 1-2.9.4L10.2 10H5.8l-.7 1.05a1.6 1.6 0 0 1-2.9-.4l-.55-2.15A2 2 0 0 1 3.6 6z"/>
-		</svg>
-	{:else if id === 'info'}
-		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-			<circle cx="8" cy="8" r="6.4"/>
-			<path d="M8 7.2v3.6M8 5.2h.01"/>
-		</svg>
-	{:else}
-		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-			<path d="M8 5.2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6z"/>
-			<path d="M8 1.6v1.3M8 13.1v1.3M14.4 8h-1.3M2.9 8H1.6M12.4 3.6l-.9.9M4.5 11.5l-.9.9M12.4 12.4l-.9-.9M4.5 4.5l-.9-.9"/>
-		</svg>
+{#snippet navIcon(id: SectionId, size: number)}
+	{#if id === 'general'}
+		<Sliders {size} weight="regular" />
+	{:else if id === 'game'}
+		<GameController {size} weight="regular" />
+	{:else if id === 'about'}
+		<Info {size} weight="regular" />
 	{/if}
 {/snippet}
 
@@ -55,30 +59,35 @@
 <div class="backdrop" onclick={(e) => { if (e.target === e.currentTarget) onClose(); }} role="presentation">
 	<div class="dialog" role="dialog" aria-modal="true" aria-label="Settings" tabindex="-1">
 		<nav class="rail">
-			<span class="rail-label">Settings</span>
-			{#each NAV as item (item.id)}
-				<button
-					type="button"
-					class="rail-item"
-					class:active={activeSection === item.id}
-					onclick={() => activeSection = item.id}
-				>
-					<span class="rail-icon">{@render navIcon(item.icon)}</span>
-					{item.label}
-				</button>
+			<span class="rail-title">Settings</span>
+
+			{#each NAV_GROUPS as group}
+				<div class="rail-group">
+					<span class="rail-group-label">{group.label}</span>
+					{#each group.items as item (item.id)}
+						<button
+							type="button"
+							class="rail-item"
+							class:active={activeSection === item.id}
+							onclick={() => activeSection = item.id}
+						>
+							<span class="rail-accent"></span>
+							<span class="rail-icon">{@render navIcon(item.id, 15)}</span>
+							{item.label}
+						</button>
+					{/each}
+				</div>
 			{/each}
 		</nav>
 
 		<div class="content-col">
 			<header class="content-header">
-				<div class="content-title">
-					<span class="title-icon">{@render navIcon(activeItem.icon)}</span>
-					{activeItem.label}
+				<div class="content-title-block">
+					<div class="content-title">{activeItem.label}</div>
+					<span class="content-desc">{activeItem.desc}</span>
 				</div>
 				<button class="close-btn" onclick={onClose} aria-label="Close settings">
-					<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-						<path d="M4 4l8 8M12 4l-8 8"/>
-					</svg>
+					<X size={15} weight="regular" />
 				</button>
 			</header>
 
@@ -110,8 +119,8 @@
 
 	.dialog {
 		display: flex;
-		width: min(690px, 92vw);
-		height: min(570px, 88vh);
+		width: min(760px, 92vw);
+		height: min(600px, 88vh);
 		border-radius: var(--radius-card, var(--radius-md, 12px));
 		background: var(--color-panel);
 		font-family: inherit;
@@ -134,31 +143,45 @@
 	}
 
 	.rail {
-		width: 162px;
+		width: 190px;
 		flex-shrink: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 3px;
-		padding: 18px 10px;
+		gap: 20px;
+		padding: 22px 14px;
 		border-right: 1px solid var(--color-border);
 		overflow-y: auto;
 	}
 
-	.rail-label {
+	.rail-title {
+		font-size: 15px;
+		font-weight: 700;
+		color: var(--color-text);
+		padding: 0 8px;
+	}
+
+	.rail-group {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+
+	.rail-group-label {
 		font-size: 10px;
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.10em;
 		color: var(--color-subtle);
-		padding: 0 8px 10px;
+		padding: 0 8px 6px;
 	}
 
 	.rail-item {
+		position: relative;
 		display: flex;
 		align-items: center;
-		gap: 8px;
+		gap: 9px;
 		text-align: left;
-		padding: 8px 9px;
+		padding: 8px 9px 8px 12px;
 		border-radius: 6px;
 		background: none;
 		border: none;
@@ -170,6 +193,22 @@
 		transition: background 0.12s ease, color 0.12s ease;
 	}
 
+	.rail-accent {
+		position: absolute;
+		left: 0;
+		top: 50%;
+		transform: translateY(-50%);
+		width: 2.5px;
+		height: 0;
+		border-radius: var(--radius-pill, 4px);
+		background: var(--color-accent);
+		transition: height 0.14s ease;
+	}
+
+	.rail-item.active .rail-accent {
+		height: 16px;
+	}
+
 	.rail-icon {
 		display: flex;
 		align-items: center;
@@ -177,11 +216,6 @@
 		flex: 0 0 auto;
 		color: var(--color-subtle);
 		transition: color 0.12s ease;
-	}
-
-	.rail-icon svg {
-		width: 13px;
-		height: 13px;
 	}
 
 	.rail-item:hover {
@@ -194,8 +228,8 @@
 	}
 
 	.rail-item.active {
-		background: var(--color-accent-dim);
-		color: var(--color-accent);
+		background: var(--card-bg);
+		color: var(--color-text);
 	}
 
 	.rail-item.active .rail-icon {
@@ -211,43 +245,40 @@
 
 	.content-header {
 		display: flex;
-		align-items: center;
+		align-items: flex-start;
 		justify-content: space-between;
 		flex-shrink: 0;
-		height: 57px;
-		padding: 0 24px;
-		border-bottom: 1px solid var(--color-border);
+		gap: 16px;
+		padding: 22px 26px 18px;
+		border-bottom: 1px dashed var(--color-border);
+	}
+
+	.content-title-block {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
 	}
 
 	.content-title {
-		display: flex;
-		align-items: center;
-		gap: 9px;
 		font-family: inherit;
-		font-size: 15px;
+		font-size: 17px;
 		font-weight: 700;
 		color: var(--color-text);
 	}
 
-	.title-icon {
-		display: flex;
-		align-items: center;
-		justify-content: center;
+	.content-desc {
+		font-size: 12px;
 		color: var(--color-muted);
-	}
-
-	.title-icon svg {
-		width: 15px;
-		height: 15px;
 	}
 
 	.close-btn {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 24px;
-		height: 24px;
-		border-radius: 5px;
+		flex-shrink: 0;
+		width: 26px;
+		height: 26px;
+		border-radius: 6px;
 		background: none;
 		border: none;
 		cursor: pointer;
@@ -260,16 +291,11 @@
 		background: var(--card-bg);
 	}
 
-	.close-btn svg {
-		width: 11px;
-		height: 11px;
-	}
-
 	.content {
 		flex: 1;
 		min-height: 0;
 		overflow-y: auto;
-		padding: 21px 24px 27px;
+		padding: 22px 26px 28px;
 		display: flex;
 		flex-direction: column;
 		gap: 18px;

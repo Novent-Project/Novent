@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import Icon from '$lib/components/chrome/Icon.svelte';
+	import { SteeringWheel, GameController } from 'phosphor-svelte';
 
 	type PeripheralId = 'wheel' | 'pedals' | 'shifter' | 'controller';
 
@@ -53,12 +53,30 @@
 	});
 </script>
 
+{#snippet peripheralIcon(id: PeripheralId)}
+	{#if id === 'wheel'}
+		<SteeringWheel size={18} weight="regular" />
+	{:else if id === 'controller'}
+		<GameController size={18} weight="regular" />
+	{:else if id === 'pedals'}
+		<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+			<rect x="6" y="7" width="3.6" height="13" rx="1.4" transform="rotate(-8 7.8 13.5)" vector-effect="non-scaling-stroke" />
+			<rect x="13.8" y="4.5" width="3.6" height="15.5" rx="1.4" transform="rotate(-4 15.6 12)" vector-effect="non-scaling-stroke" />
+		</svg>
+	{:else if id === 'shifter'}
+		<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+			<path d="M6 6v12M12 6v12M18 6v12M6 12h12" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+			<circle cx="12" cy="4" r="1.4" fill="currentColor" stroke="none" />
+		</svg>
+	{/if}
+{/snippet}
+
 <div class="card hud-card">
 	<div class="grid">
 		{#each peripherals as p (p.id)}
 			<div class="item" class:connected={p.connected}>
 				<span class="orb">
-					<Icon name={p.id} size={18} />
+					{@render peripheralIcon(p.id)}
 				</span>
 				<span class="label">{p.label}</span>
 			</div>
@@ -104,6 +122,12 @@
 		border: 1px solid var(--color-border);
 		color: var(--color-subtle);
 		transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+	}
+
+	.orb :global(svg) {
+		display: block;
+		width: 18px;
+		height: 18px;
 	}
 
 	.item.connected .orb {

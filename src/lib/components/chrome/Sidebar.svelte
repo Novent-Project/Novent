@@ -1,11 +1,10 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import Icon from '$lib/components/chrome/Icon.svelte';
-	import { Home, ChartBar, Cog6Tooth } from '@steeze-ui/heroicons';
+	import { House, ChartBar, Gear } from 'phosphor-svelte';
 	import { prefs } from '$lib/state/prefs.svelte';
 
 	const links = [
-		{ label: 'Dashboard', href: '/',         icon: Home },
+		{ label: 'Dashboard', href: '/',         icon: House },
 		{ label: 'Analysis',  href: '/analysis', icon: ChartBar },
 	];
 
@@ -40,14 +39,14 @@
 					aria-label={link.label}
 					aria-current={isActive(link.href) ? 'page' : undefined}
 				>
-					<Icon src={link.icon} size={18} />
+					<link.icon size={18} weight="regular" />
 				</a>
 			{/each}
 		</nav>
 	</div>
 
 	<button class="rail-slot settings" type="button" aria-label="Settings" onclick={() => (prefs.settingsOpen = true)}>
-		<Icon src={Cog6Tooth} size={18} />
+		<Gear size={18} weight="regular" />
 	</button>
 </aside>
 

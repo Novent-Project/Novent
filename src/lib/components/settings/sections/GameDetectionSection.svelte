@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { gameLabel } from '$lib/utils';
 	import { saveConfig } from '$lib/api';
+	import { Folder, FloppyDisk } from 'phosphor-svelte';
 
 	interface Props {
 		gamePaths: Record<string, string>;
@@ -50,9 +51,7 @@
 					</span>
 				</div>
 				<div class="path-input-wrap">
-					<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-						<path d="M2 4.5A1.5 1.5 0 0 1 3.5 3H7l2 2h3.5A1.5 1.5 0 0 1 14 6.5V12a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 12V4.5z"/>
-					</svg>
+					<Folder size={16} weight="regular" />
 					<input
 						type="text"
 						bind:value={gamePaths[key]}
@@ -66,9 +65,7 @@
 
 <div class="save-row">
 	<button class="save-btn" onclick={save}>
-		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-			<path d="M3 3h8l2 2v8H3V3zM6 3v4h4V3M5 13v-4h6v4"/>
-		</svg>
+		<FloppyDisk size={16} weight="regular" />
 		Save changes
 	</button>
 	{#if saveStatus}
