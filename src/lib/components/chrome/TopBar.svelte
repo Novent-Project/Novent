@@ -5,8 +5,8 @@
 	import { loadRememberedQuitChoice, loadRememberFlag, setRememberFlag, setRememberedQuitAction } from '$lib/utils/quitChoice';
 	import type { DetectionState } from '$lib/api';
 	import { Minus, Square, X } from 'phosphor-svelte';
-	import discordSvg from '$lib/assets/logos/discord.svg?raw';
-	import githubSvg from '$lib/assets/logos/github.svg?raw';
+	import discordSvg from '$lib/assets/Logos/discord.svg?raw';
+	import githubSvg from '$lib/assets/Logos/github.svg?raw';
 
 	interface Props {
 		detection: DetectionState;
