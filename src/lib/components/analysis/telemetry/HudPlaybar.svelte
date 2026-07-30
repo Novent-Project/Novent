@@ -1,8 +1,7 @@
 <script lang="ts">
 	import { formatTime, traceIndexAtTime } from '$lib/utils';
 	import { buildChartLine, symmetricRange } from '$lib/utils/chart';
-	import Icon from '$lib/components/chrome/Icon.svelte';
-	import { Play, Pause, ArrowsRightLeft, ArrowsPointingOut, ArrowsPointingIn } from '@steeze-ui/heroicons';
+	import { Play, Pause, ArrowsLeftRight, ArrowsOut, ArrowsIn } from 'phosphor-svelte';
 	import PlaybarChart from '$lib/components/analysis/telemetry/PlaybarChart.svelte';
 	import type { AnalysisState } from '$lib/components/analysis/state';
 
@@ -315,7 +314,11 @@
 	<div class="bar-row">
 		<div class="cluster left">
 			<button class="play" onclick={() => analysis.togglePlayback()} aria-label={analysis.isPlaying ? 'Pause' : 'Play'}>
-				<Icon src={analysis.isPlaying ? Pause : Play} theme="solid" size={16} />
+				{#if analysis.isPlaying}
+					<Pause size={16} weight="fill" />
+				{:else}
+					<Play size={16} weight="fill" />
+				{/if}
 			</button>
 
 			<button class="icon-btn" onclick={() => analysis.seek(analysis.currentTime - 1)} aria-label="Step back">
@@ -343,7 +346,7 @@
 				>
 			</span>
 			<span class="stat">
-				<Icon src={ArrowsRightLeft} theme="outline" size={16} color="var(--color-muted)" />
+				<ArrowsLeftRight size={16} weight="regular" color="var(--color-muted)" />
 				<span class="mono dist">{distanceText}</span>
 			</span>
 		</div>
@@ -362,7 +365,11 @@
 				aria-label={graphsOpen ? 'Hide telemetry graphs' : 'Show telemetry graphs'}
 				title={graphsOpen ? 'Hide telemetry graphs' : 'Show telemetry graphs'}
 			>
-				<Icon src={graphsOpen ? ArrowsPointingIn : ArrowsPointingOut} theme="outline" size={16} />
+				{#if graphsOpen}
+					<ArrowsIn size={16} weight="regular" />
+				{:else}
+					<ArrowsOut size={16} weight="regular" />
+				{/if}
 			</button>
 		</div>
 	</div>

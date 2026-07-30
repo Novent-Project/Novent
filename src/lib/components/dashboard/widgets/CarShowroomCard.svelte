@@ -2,6 +2,7 @@
 	import Kn5Viewer from '$lib/kn5/Kn5Viewer.svelte';
 	import { carPreviewUrl, fetchCarModel } from '$lib/api';
 	import { formatName } from '$lib/utils';
+	import { Lock, LockOpen } from 'phosphor-svelte';
 
 	let { car, game, locked = false, onToggleLock, onSnapshot }: {
 		car: string | null;
@@ -114,15 +115,9 @@
 			onclick={() => onToggleLock?.()}
 		>
 			{#if locked}
-				<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-					<rect x="3.5" y="7" width="9" height="6" rx="1.5" />
-					<path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" />
-				</svg>
+				<Lock size={16} weight="regular" />
 			{:else}
-				<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-					<rect x="3.5" y="7" width="9" height="6" rx="1.5" />
-					<path d="M5.5 7V5a2.5 2.5 0 0 1 4.9-.7" />
-				</svg>
+				<LockOpen size={16} weight="regular" />
 			{/if}
 		</button>
 		{/if}

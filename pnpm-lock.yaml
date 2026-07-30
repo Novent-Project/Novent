@@ -14,12 +14,6 @@ importers:
       '@fontsource-variable/jetbrains-mono':
         specifier: ^5.3.0
         version: 5.3.0
-      '@steeze-ui/heroicons':
-        specifier: ^2.4.2
-        version: 2.4.2
-      '@steeze-ui/svelte-icon':
-        specifier: ^1.6.2
-        version: 1.6.2(svelte@5.56.3)
       '@tauri-apps/api':
         specifier: ^2.11.0
         version: 2.11.0
@@ -212,14 +206,6 @@ packages:
 
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
-
-  '@steeze-ui/heroicons@2.4.2':
-    resolution: {integrity: sha512-66luL+uaxyC6mcZigewH4phfDxNWj4sH+n6qK2VnY3zcgpMmNAgVQbMGfZYfKhLqrUo13BlqpmhWuHqAUpehlA==}
-
-  '@steeze-ui/svelte-icon@1.6.2':
-    resolution: {integrity: sha512-Q2WP/RkM1JhMueX0FJogSj4J1bncSHaAiiPCqjcseRcHKqfpjYFPJa8bA50I+4KbyOVJ9fdUvTQ3ww9X0ITRxQ==}
-    peerDependencies:
-      svelte: ^5.0.0
 
   '@sveltejs/acorn-typescript@1.0.10':
     resolution: {integrity: sha512-4WfKk68eTih+MiJD4fSbxN7E8kVBmTMPWHUPYjvl2N0rMs53YLTT8/YjKU5Dtnz5LqDjl7LEw4U7lXR2W3J5WA==}
@@ -783,12 +769,6 @@ snapshots:
   '@rolldown/pluginutils@1.0.1': {}
 
   '@standard-schema/spec@1.1.0': {}
-
-  '@steeze-ui/heroicons@2.4.2': {}
-
-  '@steeze-ui/svelte-icon@1.6.2(svelte@5.56.3)':
-    dependencies:
-      svelte: 5.56.3
 
   '@sveltejs/acorn-typescript@1.0.10(acorn@8.17.0)':
     dependencies:

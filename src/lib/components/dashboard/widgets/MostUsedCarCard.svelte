@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { formatName } from '$lib/utils';
-	import Icon from '$lib/components/chrome/Icon.svelte';
+	import GameLogo from '$lib/components/chrome/GameLogo.svelte';
+	import { Car } from 'phosphor-svelte';
 
 	interface CarSpotlight {
 		car:         string;
@@ -30,7 +31,7 @@
 			</div>
 		{:else}
 			<div class="placeholder hero" aria-hidden="true">
-				<Icon name="car" size={32} />
+				<Car size={32} weight="regular" />
 			</div>
 		{/if}
 
@@ -41,7 +42,7 @@
 		{/if}
 
 		<div class="identity">
-			<span class="logo"><Icon game={car.game ?? 'AC'} size={20} /></span>
+			<span class="logo"><GameLogo game={car.game ?? 'AC'} size={20} /></span>
 			<div class="titles">
 				<span class="name">{formatName(car.car)}</span>
 				<span class="tag">Most recent car</span>
@@ -69,7 +70,7 @@
 	{:else}
 		<div class="empty">
 			<span class="placeholder thumb thumb--empty" aria-hidden="true">
-				<Icon name="car" size={26} />
+				<Car size={26} weight="regular" />
 			</span>
 			<span class="title">No Cars Yet</span>
 			<span class="sub">Head to the Race Engineer tab to start logging data</span>

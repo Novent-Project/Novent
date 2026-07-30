@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { formatName, formatDateTime } from '$lib/utils';
-	import Icon from '$lib/components/chrome/Icon.svelte';
+	import GameLogo from '$lib/components/chrome/GameLogo.svelte';
+	import { CaretUp, Clock, Thermometer } from 'phosphor-svelte';
 	import type { Lap } from '$lib/api';
 
 	interface Props {
@@ -39,15 +40,13 @@
 </script>
 
 <div class="hud-card session-header" class:compact={!expanded}>
-	<div class="logo-slot"><Icon {game} size={22} /></div>
+	<div class="logo-slot"><GameLogo {game} size={22} /></div>
 
 	<div class="body">
 		<div class="top-row">
 			<span class="car">{formatName(car)}</span>
 			<button class="collapse-btn" onclick={toggle} aria-label={expanded ? 'Collapse session info' : 'Expand session info'} title={expanded ? 'Collapse' : 'Expand'}>
-				<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" class:flipped={!expanded}>
-					<path d="M4 10l4-4 4 4" stroke-linecap="round" stroke-linejoin="round" />
-				</svg>
+				<CaretUp class={!expanded ? 'flipped' : ''} size={14} weight="bold" />
 			</button>
 		</div>
 
@@ -56,18 +55,13 @@
 			{#if expanded}
 				<span class="dot">•</span>
 				<span class="meta-item">
-					<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-						<circle cx="8" cy="8" r="5.5" />
-						<path d="M8 5v3l2 1.5" />
-					</svg>
+					<Clock size={14} weight="regular" />
 					<span class="mono">{dateTime}</span>
 				</span>
 				{#if airTemp}
 					<span class="dot">•</span>
 					<span class="meta-item">
-						<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-							<path d="M6.5 9V3.5a1.5 1.5 0 0 1 3 0V9a2.5 2.5 0 1 1-3 0z" />
-						</svg>
+						<Thermometer size={14} weight="regular" />
 						<span class="mono">{airTemp}°C</span>
 						<span class="temp-tag">Air</span>
 					</span>
@@ -75,9 +69,7 @@
 				{#if roadTemp}
 					<span class="dot">•</span>
 					<span class="meta-item">
-						<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-							<path d="M6.5 9V3.5a1.5 1.5 0 0 1 3 0V9a2.5 2.5 0 1 1-3 0z" />
-						</svg>
+						<Thermometer size={14} weight="regular" />
 						<span class="mono">{roadTemp}°C</span>
 						<span class="temp-tag">Road</span>
 					</span>

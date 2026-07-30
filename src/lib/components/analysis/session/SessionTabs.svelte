@@ -1,6 +1,5 @@
 <script lang="ts">
-  import Icon from '$lib/components/chrome/Icon.svelte';
-  import { XMark, Plus } from '@steeze-ui/heroicons';
+  import { X, Plus } from 'phosphor-svelte';
 
   interface Tab {
     id: string;
@@ -33,14 +32,14 @@
       </button>
       {#if tab.closable}
         <button type="button" class="close" aria-label="Close tab" onclick={() => onClose(tab.id)}>
-          <Icon src={XMark} theme="outline" size={10} />
+          <X size={10} weight="regular" />
         </button>
       {/if}
     </div>
   {/each}
 
   <button type="button" class="new" aria-label="New tab" onclick={() => onNew()}>
-    <Icon src={Plus} theme="outline" size={14} />
+    <Plus size={14} weight="regular" />
   </button>
 </div>
 

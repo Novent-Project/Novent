@@ -1,6 +1,5 @@
 <script lang="ts">
-	import Icon from '$lib/components/chrome/Icon.svelte';
-	import { Clock } from '@steeze-ui/heroicons';
+	import { SteeringWheel, Clock } from 'phosphor-svelte';
 	import type { DriverTelemetry } from '$lib/components/analysis/state';
 
 	interface Props {
@@ -33,7 +32,7 @@
 			aria-pressed={onToggleGhost ? ghostVisible : undefined}
 			aria-label={onToggleGhost ? (ghostVisible ? 'Hide ghost overlay' : 'Show ghost overlay') : undefined}
 		>
-			<Icon name="wheel" size={18} color={driver.color} />
+			<SteeringWheel size={18} color={driver.color} weight="regular" />
 		</svelte:element>
 		<div class="name" style="color: {driver.color};">{driver.name}</div>
 		<div class="lap-time mono">{driver.lapTime}</div>
@@ -46,7 +45,7 @@
 	<div class="row-extra">
 		<div class="row-extra-inner">
 			<div class="sub">
-				<Icon src={Clock} theme="outline" size={11} />
+				<Clock size={11} weight="regular" />
 				<span>Stint {driver.stint} · Lap {driver.lap}</span>
 			</div>
 
@@ -66,7 +65,10 @@
 
 			<div class="stat">
 				<span class="value mono gear-value">
-					<Icon name="shifter" size={12} color="var(--color-muted)" />
+					<svg viewBox="0 0 24 24" fill="none" stroke="var(--color-muted)" stroke-width="1.5" width="12" height="12" aria-hidden="true">
+						<path d="M6 6v12M12 6v12M18 6v12M6 12h12" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+						<circle cx="12" cy="4" r="1.4" fill="var(--color-muted)" stroke="none" />
+					</svg>
 					{driver.gear}
 				</span>
 				<span class="unit">GEAR</span>

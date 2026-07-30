@@ -6,14 +6,40 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write # required to create the release
+  contents: write
 
 jobs:
-  build:
-    runs-on: windows-latest
-
+  frontend:
+    name: Build frontend
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - uses: actions/upload-artifact@v4
+        with: { name: frontend-dist-novent, path: build/, retention-days: 1 }
+
+  tauri:
+    name: Build Novent (Windows x64)
+    needs: frontend
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with: { name: frontend-dist-novent, path: build/ }
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
 
       - uses: pnpm/action-setup@v4
         with:
@@ -23,12 +49,6 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: swatinem/rust-cache@v2
-        with:
-          workspaces: src-tauri
 
       - name: Compute next version
         id: version
@@ -41,7 +61,6 @@ jobs:
           RAW=$(gh release view --repo "$GITHUB_REPOSITORY" \
                   --json tagName --jq .tagName 2>/dev/null || echo "")
 
-          # gh emits CRLF on Windows — strip all whitespace before parsing
           LATEST=$(printf '%s' "$RAW" | tr -d '[:space:]')
 
           if [[ "$LATEST" =~ ^v?([0-9]+)\.([0-9]+) ]]; then
@@ -49,11 +68,9 @@ jobs:
             MINOR="${BASH_REMATCH[2]}"
             NEXT_NUM="${MAJOR}.$((MINOR + 1))"
           else
-            # no prior release found — v0.1-0.3 already exist elsewhere, resume at 0.4
             NEXT_NUM="0.4"
           fi
 
-          echo "Previous: [${LATEST:-none}]  ->  Next: [v${NEXT_NUM}]"
           echo "tag=v${NEXT_NUM}"       >> "$GITHUB_OUTPUT"
           echo "semver=${NEXT_NUM}.0"   >> "$GITHUB_OUTPUT"
 
@@ -64,7 +81,6 @@ jobs:
         run: |
           set -euo pipefail
 
-          echo "Stamping version: [$APP_VERSION]"
           if ! [[ "$APP_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::Not a valid semver string: [$APP_VERSION]"
             exit 1
@@ -78,8 +94,6 @@ jobs:
             fs.writeFileSync(p, JSON.stringify(c, null, 2) + '\n');
           "
 
-          node -e "console.log('confirmed:', JSON.stringify(require('./src-tauri/tauri.conf.json').version))"
-
       - name: Download backend sidecar
         shell: bash
         env:
@@ -90,22 +104,43 @@ jobs:
           gh release download --repo Novent-Project/Novent-Backend \
             --pattern 'backend-x86_64-pc-windows-msvc.exe' \
             --dir src-tauri/binaries --clobber
-          ls -la src-tauri/binaries
+
+      - name: Patch tauri.conf.json for CI
+        shell: bash
+        run: |
+          python3 -c "
+          import json, pathlib
+          p = pathlib.Path('src-tauri/tauri.conf.json')
+          c = json.loads(p.read_text())
+          c.setdefault('build', {})['beforeBuildCommand'] = ''
+          p.write_text(json.dumps(c, indent=2))
+          "
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Build (exe only, no installers)
-        run: pnpm tauri build --no-bundle
-
-      - name: Create release
+      - name: Delete existing draft release
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          set -euo pipefail
-          ls -la src-tauri/target/release/*.exe
-          gh release create "${{ steps.version.outputs.tag }}" \
-            --repo "$GITHUB_REPOSITORY" \
-            --title "Novent ${{ steps.version.outputs.tag }}" \
-            --notes "Automated build from ${{ github.sha }}." \
-            src-tauri/target/release/*.exe
+          RELEASE_ID=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/releases" \
+            | jq -r '.[] | select(.tag_name == "${{ steps.version.outputs.tag }}" and .draft == true) | .id')
+          if [ -n "$RELEASE_ID" ]; then
+            curl -s -X DELETE -H "Authorization: Bearer $GITHUB_TOKEN" \
+              "https://api.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID"
+            curl -s -X DELETE -H "Authorization: Bearer $GITHUB_TOKEN" \
+              "https://api.github.com/repos/${{ github.repository }}/git/refs/tags/${{ steps.version.outputs.tag }}"
+          fi
+
+      - name: Build Tauri app + create draft release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ steps.version.outputs.tag }}
+          releaseName: Novent ${{ steps.version.outputs.tag }}
+          releaseBody: |
+            Automated build from ${{ github.sha }}.
+          releaseDraft: true
+          prerelease: false
