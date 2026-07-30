@@ -1,8 +1,8 @@
-name: Build Novent (dev)
+name: Build Novent
 
 on:
   push:
-    branches: [dev]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -30,7 +30,7 @@ jobs:
         with:
           workspaces: src-tauri
 
-      - name: Compute next dev version
+      - name: Compute next version
         id: version
         shell: bash
         env:
@@ -38,24 +38,23 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Only look at dev-v* tags so main releases don't affect the dev count
-          LATEST=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 \
-                    --json tagName --jq '.[].tagName' 2>/dev/null \
-                  | tr -d '\r' | grep -E '^dev-v[0-9]+\.[0-9]+$' \
-                  | sort -V | tail -n 1 || true)
+          RAW=$(gh release view --repo "$GITHUB_REPOSITORY" \
+                  --json tagName --jq .tagName 2>/dev/null || echo "")
 
-          if [[ "$LATEST" =~ ^dev-v([0-9]+)\.([0-9]+)$ ]]; then
+          # gh emits CRLF on Windows — strip all whitespace before parsing
+          LATEST=$(printf '%s' "$RAW" | tr -d '[:space:]')
+
+          if [[ "$LATEST" =~ ^v?([0-9]+)\.([0-9]+) ]]; then
             MAJOR="${BASH_REMATCH[1]}"
             MINOR="${BASH_REMATCH[2]}"
             NEXT_NUM="${MAJOR}.$((MINOR + 1))"
           else
-            # no prior dev release — start at 0.4
+            # no prior release found — v0.1-0.3 already exist elsewhere, resume at 0.4
             NEXT_NUM="0.4"
           fi
 
-          echo "Previous: [${LATEST:-none}]  ->  Next: [dev-v${NEXT_NUM}]"
-          echo "tag=dev-v${NEXT_NUM}"   >> "$GITHUB_OUTPUT"
-          echo "name=${NEXT_NUM}"       >> "$GITHUB_OUTPUT"
+          echo "Previous: [${LATEST:-none}]  ->  Next: [v${NEXT_NUM}]"
+          echo "tag=v${NEXT_NUM}"       >> "$GITHUB_OUTPUT"
           echo "semver=${NEXT_NUM}.0"   >> "$GITHUB_OUTPUT"
 
       - name: Stamp version into tauri.conf.json
@@ -98,7 +97,7 @@ jobs:
       - name: Build (exe only, no installers)
         run: pnpm tauri build --no-bundle
 
-      - name: Create pre-release
+      - name: Create release
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -107,7 +106,6 @@ jobs:
           ls -la src-tauri/target/release/*.exe
           gh release create "${{ steps.version.outputs.tag }}" \
             --repo "$GITHUB_REPOSITORY" \
-            --title "Dev v${{ steps.version.outputs.name }}" \
-            --notes "Automated dev build from ${{ github.sha }}." \
-            --prerelease \
+            --title "Novent ${{ steps.version.outputs.tag }}" \
+            --notes "Automated build from ${{ github.sha }}." \
             src-tauri/target/release/*.exe
