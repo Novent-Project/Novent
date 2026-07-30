@@ -1,46 +1,48 @@
-use tauri::{Manager, RunEvent};
-use tauri_plugin_shell::ShellExt;
-use tauri_plugin_shell::process::CommandChild;
-use std::sync::Mutex;
+mod commands;
+mod core;
 
-struct BackendProcess(Mutex<Option<CommandChild>>);
+use tauri::Manager;
+use core::backend::BackendProcess;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let app = tauri::Builder::default()
+    tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_http::init())
+        .manage(BackendProcess::empty())
+        .invoke_handler(tauri::generate_handler![
+            commands::system::quit,
+            commands::system::restart_app,
+            commands::system::get_os_info,
+            commands::updater::list_releases,
+            commands::updater::download_and_install_update,
+        ])
         .setup(|app| {
             #[cfg(windows)]
             {
-                let sidecar_command = app.shell()
-                    .sidecar("backend")
-                    .expect("Failed to create `backend` binary command.");
+                let child = core::backend::spawn_and_wait(app.handle());
+                *app.state::<BackendProcess>().0.lock().unwrap() = Some(child);
+            }
 
-                let (_receiver, child) = sidecar_command
-                    .spawn()
-                    .expect("Failed to spawn backend sidecar");
+            core::tray::build(app.handle())?;
 
-                println!("Backend spawned. PID: {}", child.pid());
-                app.manage(BackendProcess(Mutex::new(Some(child))));
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.set_decorations(false);
+                let _ = window.set_title("Novent");
             }
 
             Ok(())
         })
-        .build(tauri::generate_context!())
-        .expect("error while building tauri application");
-
-    app.run(|app_handle, event| {
-        if let RunEvent::Exit = event {
-            #[cfg(windows)]
-            {
-                let state = app_handle.state::<BackendProcess>();
-                let mut guard = state.0.lock().unwrap();
-                if let Some(child) = guard.take() {
-                    let _ = std::process::Command::new("taskkill")
-                        .args(["/F", "/T", "/PID", &child.pid().to_string()])
-                        .status();
-                }
+        .on_window_event(|window, event| match event {
+            tauri::WindowEvent::CloseRequested { api, .. } => {
+                api.prevent_close();
+                let _ = window.hide();
             }
-        }
-    });
+            tauri::WindowEvent::Destroyed => {
+                window.app_handle().state::<BackendProcess>().kill();
+            }
+            _ => {}
+        })
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
 }

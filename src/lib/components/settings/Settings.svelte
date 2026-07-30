@@ -1,6 +1,7 @@
 <script lang="ts">
 	import GeneralSection from './sections/GeneralSection.svelte';
 	import GameDetectionSection from './sections/GameDetectionSection.svelte';
+	import AboutSection from './sections/AboutSection.svelte';
 
 	interface Props {
 		gamePaths:   Record<string, string>;
@@ -17,6 +18,7 @@
 	const NAV = [
 		{ id: 'general', label: 'General',        icon: 'general' },
 		{ id: 'game',    label: 'Game Detection', icon: 'controller' },
+		{ id: 'about',   label: 'About',          icon: 'info' },
 	] as const;
 
 	type SectionId = (typeof NAV)[number]['id'];
@@ -34,6 +36,11 @@
 		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
 			<path d="M4 6.25h2M5 5.25v2M9.6 6.5h.01M11 5.4h.01"/>
 			<path d="M3.6 6h8.8a2 2 0 0 1 1.94 2.5l-.55 2.15a1.6 1.6 0 0 1-2.9.4L10.2 10H5.8l-.7 1.05a1.6 1.6 0 0 1-2.9-.4l-.55-2.15A2 2 0 0 1 3.6 6z"/>
+		</svg>
+	{:else if id === 'info'}
+		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+			<circle cx="8" cy="8" r="6.4"/>
+			<path d="M8 7.2v3.6M8 5.2h.01"/>
 		</svg>
 	{:else}
 		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -80,6 +87,8 @@
 					<GeneralSection bind:appZoom bind:traceZoom bind:graphPlacement bind:flipSide />
 				{:else if activeSection === 'game'}
 					<GameDetectionSection bind:gamePaths />
+				{:else if activeSection === 'about'}
+					<AboutSection />
 				{/if}
 			</div>
 		</div>
